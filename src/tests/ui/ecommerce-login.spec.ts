@@ -386,7 +386,7 @@ test.describe('E-Commerce Logout @critical', () => {
     testUser = await registerTestUser(browser);
   });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(async ({ page: _page }, testInfo) => {
     await annotate({
       epic: 'E-Commerce Platform',
       feature: 'User Session Management',
