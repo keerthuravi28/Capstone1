@@ -1,0 +1,48 @@
+{
+  "name": "playwright-ts-orangehrm-framework",
+  "version": "2.0.0",
+  "description": "Playwright TypeScript Test Framework for OrangeHRM",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --project=ui",
+    "test:firefox": "playwright test --project=ui-firefox",
+    "test:webkit": "playwright test --project=ui-webkit",
+    "test:cross-browser": "playwright test --project=ui --project=ui-firefox --project=ui-webkit",
+    "test:api": "playwright test --project=api",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:regression": "playwright test --grep @regression",
+    "test:critical": "playwright test --grep @critical",
+    "test:accessibility": "playwright test --grep @accessibility",
+    "test:visual": "playwright test --project=ui --grep @visual",
+    "test:visual:update": "playwright test --project=ui --grep @visual --update-snapshots",
+    "install:browsers": "playwright install chromium firefox webkit",
+    "test:report": "playwright test && npx playwright show-report test-results/playwright-report",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf test-results"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@playwright/test": "^1.44.0",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "winston": "^3.13.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@azure/identity": "^4.13.1",
+    "@azure/playwright": "^1.1.6",
+    "@playwright/mcp": "^0.0.77",
+    "@types/node": "^20.14.2",
+    "@typescript-eslint/eslint-plugin": "^7.13.0",
+    "@typescript-eslint/parser": "^7.13.0",
+    "eslint": "^8.57.0",
+    "jira-mcp-server": "^0.0.1",
+    "rimraf": "^5.0.7",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,164 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same branch — avoids piling up redundant
+# traffic against the shared OrangeHRM demo instance from stale pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run type-check
+
+  smoke:
+    name: Smoke (UI + API)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=ui --project=api --grep @smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-results
+          path: test-results/
+          retention-days: 7
+
+  api-full:
+    name: API (functional + contract)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      # API tests use Playwright's APIRequestContext only — no browser needed.
+      - run: npm run test:api
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-full-test-results
+          path: test-results/
+          retention-days: 7
+
+  ui-regression:
+    name: UI Regression (Chromium)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Chromium-only in CI to keep runtime/traffic against the shared demo
+      # reasonable. Full cross-browser (`npm run test:cross-browser`) is
+      # available on demand but not part of the automatic gate.
+      - run: npx playwright test --project=ui --grep @regression
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-regression-test-results
+          path: test-results/
+          retention-days: 7
+
+  accessibility:
+    name: Accessibility (WCAG)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=ui --grep @accessibility
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-test-results
+          path: test-results/
+          retention-days: 7
+
+  security:
+    name: Security (headers/cookies/injection)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=ui --grep @security
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-test-results
+          path: test-results/
+          retention-days: 7
+
+  visual:
+    name: Visual Regression (Chromium, Linux)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    # Screenshot rendering is OS-dependent (font hinting/anti-aliasing differ
+    # across Windows/macOS/Linux). This job runs on Linux (ubuntu-latest);
+    # if baselines in *-snapshots/ were generated on a different OS, this
+    # WILL show diffs that aren't real regressions — see the visual-testing
+    # notes in src/tests/ui/visual.spec.ts. Regenerate baselines in a
+    # Linux-consistent environment (e.g. the official Playwright Docker
+    # image, or this same workflow via workflow_dispatch + --update-snapshots)
+    # before relying on this job as a hard merge gate. continue-on-error
+    # keeps it informative rather than blocking merges until then.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:visual
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-test-results
+          path: test-results/
+          retention-days: 7

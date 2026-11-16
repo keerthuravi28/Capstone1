@@ -1,0 +1,51 @@
+{
+  "admin": {
+    "username": "Admin",
+    "password": "admin123",
+    "role": "Admin",
+    "description": "Default OrangeHRM admin user"
+  },
+  "invalidUsers": [
+    {
+      "username": "wrongUser",
+      "password": "admin123",
+      "expectedError": "Invalid credentials",
+      "description": "Invalid username with valid password"
+    },
+    {
+      "username": "Admin",
+      "password": "wrongPassword",
+      "expectedError": "Invalid credentials",
+      "description": "Valid username with invalid password"
+    },
+    {
+      "username": "wrongUser",
+      "password": "wrongPassword",
+      "expectedError": "Invalid credentials",
+      "description": "Both username and password invalid"
+    }
+  ],
+  "emptyCredentials": [
+    {
+      "username": "",
+      "password": "admin123",
+      "field": "username",
+      "expectedError": "Required",
+      "description": "Empty username"
+    },
+    {
+      "username": "Admin",
+      "password": "",
+      "field": "password",
+      "expectedError": "Required",
+      "description": "Empty password"
+    },
+    {
+      "username": "",
+      "password": "",
+      "field": "both",
+      "expectedError": "Required",
+      "description": "Both fields empty"
+    }
+  ]
+}

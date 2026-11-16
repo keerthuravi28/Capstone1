@@ -1,0 +1,121 @@
+{
+  "validUsers": [
+    {
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@test.com",
+      "password": "SecurePass123!",
+      "company": "Tech Corp",
+      "address": "123 Main Street",
+      "country": "United States",
+      "state": "California",
+      "city": "San Francisco",
+      "zipcode": "94105",
+      "phone": "14155552671",
+      "acceptNewsletter": true,
+      "acceptTerms": true,
+      "description": "Standard user with all fields"
+    },
+    {
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@test.com",
+      "password": "Password@123",
+      "company": "Finance Inc",
+      "address": "456 Oak Avenue",
+      "country": "United Kingdom",
+      "state": "London",
+      "city": "London",
+      "zipcode": "SW1A 1AA",
+      "phone": "442071838750",
+      "acceptNewsletter": false,
+      "acceptTerms": true,
+      "description": "User without newsletter signup"
+    },
+    {
+      "firstName": "Bob",
+      "lastName": "Johnson",
+      "email": "bob.johnson@test.com",
+      "password": "MyPassword456#",
+      "company": "Retail Store",
+      "address": "789 Elm Street",
+      "country": "Canada",
+      "state": "Ontario",
+      "city": "Toronto",
+      "zipcode": "M5H 2N2",
+      "phone": "14165551234",
+      "acceptNewsletter": true,
+      "acceptTerms": true,
+      "description": "Canadian user"
+    }
+  ],
+  "invalidUsers": [
+    {
+      "firstName": "Invalid",
+      "lastName": "User",
+      "email": "invalidemail",
+      "password": "Pass123",
+      "confirmPassword": "Pass123",
+      "errorType": "invalidEmail",
+      "expectedError": "invalid email format",
+      "description": "User with invalid email format"
+    },
+    {
+      "firstName": "Mismatch",
+      "lastName": "Pass",
+      "email": "mismatch@test.com",
+      "password": "Password123",
+      "confirmPassword": "DifferentPass123",
+      "errorType": "passwordMismatch",
+      "expectedError": "passwords do not match",
+      "description": "User with mismatched passwords"
+    },
+    {
+      "firstName": "Weak",
+      "lastName": "Pass",
+      "email": "weak@test.com",
+      "password": "weak",
+      "confirmPassword": "weak",
+      "errorType": "weakPassword",
+      "expectedError": "password must be at least 8 characters",
+      "description": "User with weak password"
+    },
+    {
+      "firstName": "",
+      "lastName": "NoFirst",
+      "email": "nofirst@test.com",
+      "password": "Password123",
+      "confirmPassword": "Password123",
+      "errorType": "missingField",
+      "expectedError": "First name is required",
+      "description": "User without first name"
+    },
+    {
+      "firstName": "NoLast",
+      "lastName": "",
+      "email": "nolast@test.com",
+      "password": "Password123",
+      "confirmPassword": "Password123",
+      "errorType": "missingField",
+      "expectedError": "Last name is required",
+      "description": "User without last name"
+    }
+  ],
+  "existingEmail": "existing@test.com",
+  "existingUsers": [
+    {
+      "email": "test.user@example.com",
+      "password": "Password123!",
+      "firstName": "Test",
+      "lastName": "User",
+      "description": "Pre-existing test user"
+    },
+    {
+      "email": "demo@test.com",
+      "password": "DemoPass123!",
+      "firstName": "Demo",
+      "lastName": "Account",
+      "description": "Demo account for testing"
+    }
+  ]
+}
