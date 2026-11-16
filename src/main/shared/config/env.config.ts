@@ -55,7 +55,7 @@ function requireEnv(key: string, fallback?: string): string {
   if (value === undefined) {
     throw new Error(
       `Missing required environment variable: "${key}". ` +
-      `Copy .env.example to .env and set the value.`
+      `Set it in your .env file or as an environment variable.`
     );
   }
   return value;
@@ -75,17 +75,14 @@ function toInt(value: string | undefined, fallback: number): number {
 
 export const ENV: EnvConfig = {
   // Application
-  baseUrl: requireEnv('BASE_URL', 'https://opensource-demo.orangehrmlive.com'),
+  baseUrl: requireEnv('BASE_URL', 'https://automationexercise.com'),
   credentials: {
-    username: requireEnv('APP_USERNAME', 'Admin'),
-    password: requireEnv('APP_PASSWORD', 'admin123'),
+    username: process.env.APP_USERNAME || '',
+    password: process.env.APP_PASSWORD || '',
   },
 
   // API
-  apiBaseUrl: requireEnv(
-    'API_BASE_URL',
-    'https://opensource-demo.orangehrmlive.com/web/index.php/api/v2'
-  ),
+  apiBaseUrl: process.env.API_BASE_URL || '',
   apiTimeout: toInt(process.env.API_TIMEOUT, 15000),
 
   // Browser

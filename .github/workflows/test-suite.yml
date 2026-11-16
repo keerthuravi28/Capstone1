@@ -16,6 +16,7 @@ env:
   HEADLESS: 'true'
   ECOM_SPECS: >-
     src/tests/ui/registration.spec.ts
+    src/tests/ui/ecommerce-login.spec.ts
     src/tests/ui/products-and-cart.spec.ts
     src/tests/ui/checkout-and-orders.spec.ts
     src/tests/ui/contact-form.spec.ts

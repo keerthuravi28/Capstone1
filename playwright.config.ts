@@ -12,12 +12,6 @@ export default defineConfig({
   testDir: './src/tests',
   testMatch: ['**/*.spec.ts'],
   
-  // Runs pre-flight environment checks, then authenticates the admin user ONCE
-  // before the suite and persists the session to .auth/admin.json. The
-  // `loggedIn` fixture restores it instead of driving the login form per test.
-  // See src/main/config/global-setup.ts.
-  // DISABLED for e-commerce tests (no pre-login needed)
-  // globalSetup: './src/main/config/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 3 : 2,
@@ -93,9 +87,5 @@ export default defineConfig({
     //     launchOptions: { slowMo },
     //   },
     // },
-    {
-      name: 'api',
-      testMatch: ['**/tests/api/**/*.spec.ts'],
-    },
   ],
 });

@@ -1,8 +1,0 @@
-username,password,role,expectedResult,description
-Admin,admin123,Admin,success,Valid admin credentials
-invalidUser,admin123,N/A,failure,Invalid username with valid password
-Admin,wrongPassword,N/A,failure,Valid username with invalid password
-wrongUser,wrongPassword,N/A,failure,Both username and password invalid
-,admin123,N/A,validation,Empty username field
-Admin,,N/A,validation,Empty password field
-,,N/A,validation,Both fields empty

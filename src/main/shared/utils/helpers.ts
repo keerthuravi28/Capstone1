@@ -48,10 +48,10 @@ export function randomInt(min: number, max: number): number {
 }
 
 /**
- * Generate a unique employee username for OrangeHRM.
- * e.g. "emp_aB3xYz9k"
+ * Generate a unique username with an optional prefix.
+ * e.g. "user_aB3xYz9k"
  */
-export function generateUsername(prefix = 'emp'): string {
+export function generateUsername(prefix = 'user'): string {
   return `${prefix}_${randomString(8)}`;
 }
 
