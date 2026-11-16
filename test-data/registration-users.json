@@ -100,22 +100,5 @@
       "expectedError": "Last name is required",
       "description": "User without last name"
     }
-  ],
-  "existingEmail": "existing@test.com",
-  "existingUsers": [
-    {
-      "email": "test.user@example.com",
-      "password": "Password123!",
-      "firstName": "Test",
-      "lastName": "User",
-      "description": "Pre-existing test user"
-    },
-    {
-      "email": "demo@test.com",
-      "password": "DemoPass123!",
-      "firstName": "Demo",
-      "lastName": "Account",
-      "description": "Demo account for testing"
-    }
   ]
 }

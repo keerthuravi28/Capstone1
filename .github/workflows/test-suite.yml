@@ -20,6 +20,7 @@ env:
     src/tests/ui/products-and-cart.spec.ts
     src/tests/ui/checkout-and-orders.spec.ts
     src/tests/ui/contact-form.spec.ts
+    src/tests/ui/accessibility.spec.ts
 
 jobs:
   lint-and-typecheck:

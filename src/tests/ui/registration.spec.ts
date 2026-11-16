@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { randomString } from '../../main/shared/utils/helpers';
+import { test, expect, Browser } from '@playwright/test';
+import { randomString, generateEmail } from '../../main/shared/utils/helpers';
 import { takeScreenshot } from '../../main/shared/utils/helpers';
 import { stepLogger } from '../../main/shared/utils/logger';
 import { annotate, parameter, Severity } from '../../main/shared/reporting/reporting';
@@ -232,4 +232,129 @@ test.describe('E-Commerce Quick Signup @smoke @critical', () => {
     stepLogger.info('Both forms verified as visible');
     await takeScreenshot(page, 'login-signup-layout');
   });
+});
+
+// ─── Duplicate Email Registration ─────────────────────────────────────────────
+
+type RegisteredUser = { email: string; password: string; firstName: string };
+
+async function registerUser(browser: Browser): Promise<RegisteredUser> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.route(
+    /(googlesyndication|doubleclick|adservice|google-analytics|googletagmanager|consent\.google|pagead|aswpsdkus|googleads)/,
+    (route) => route.abort(),
+  );
+
+  const email = generateEmail('mailinator.com');
+  const password = 'Test@1234';
+  const firstName = `Test${randomString(4)}`;
+
+  try {
+    await page.goto('https://automationexercise.com/login', { waitUntil: 'domcontentloaded' });
+    await page.fill('input[data-qa="signup-name"]', `${firstName} User`);
+    await page.fill('input[data-qa="signup-email"]', email);
+    await page.click('button[data-qa="signup-button"]');
+
+    await page.locator('input#password').waitFor({ state: 'visible', timeout: 15000 });
+    await page.fill('input#password', password);
+    await page.selectOption('select#days', '10');
+    await page.selectOption('select#months', '5');
+    await page.selectOption('select#years', '1990');
+    await page.fill('input#first_name', firstName);
+    await page.fill('input#last_name', 'User');
+    await page.fill('input#address1', '123 Test Street');
+    await page.fill('input#state', 'TestState');
+    await page.fill('input#city', 'TestCity');
+    await page.fill('input#zipcode', '12345');
+    await page.fill('input#mobile_number', '5551234567');
+    await page.click('button[data-qa="create-account"]');
+
+    const continueBtn = page.locator('a[data-qa="continue-button"]');
+    await continueBtn.waitFor({ state: 'visible', timeout: 15000 });
+    await continueBtn.click();
+    await page.waitForLoadState('domcontentloaded');
+  } finally {
+    await context.close();
+  }
+
+  stepLogger.info(`Registered test user: ${email}`);
+  return { email, password, firstName };
+}
+
+test.describe('Duplicate Email Registration @regression', () => {
+  let existingUser: RegisteredUser;
+
+  test.beforeAll(async ({ browser }) => {
+    existingUser = await registerUser(browser);
+  });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    await annotate({
+      epic: 'E-Commerce Platform',
+      feature: 'User Registration',
+      owner: 'QA Team',
+      layer: 'ui',
+    });
+
+    stepLogger.info(`Starting test: ${testInfo.title}`);
+    await page.goto('https://automationexercise.com/login', { waitUntil: 'domcontentloaded' });
+  });
+
+  test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status !== testInfo.expectedStatus) {
+      stepLogger.error(`Test failed: ${testInfo.title}`);
+      await takeScreenshot(page, `FAILED-duplicate-${testInfo.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`);
+    }
+  });
+
+  test('signup rejects already registered email',
+    { tag: ['@regression', '@critical'] },
+    async ({ page }) => {
+      await annotate({
+        story: 'Duplicate email rejection',
+        severity: Severity.CRITICAL,
+        description: 'Attempting to register with an existing email shows an error',
+      });
+      await parameter('email', existingUser.email);
+
+      await test.step('Fill signup form with existing email', async () => {
+        await page.fill('input[data-qa="signup-name"]', 'Duplicate User');
+        await page.fill('input[data-qa="signup-email"]', existingUser.email);
+        stepLogger.info(`Attempting signup with existing email: ${existingUser.email}`);
+      });
+
+      await test.step('Submit and verify error', async () => {
+        await page.click('button[data-qa="signup-button"]');
+
+        const errorText = page.locator('p:has-text("Email Address already exist!")');
+        await expect(errorText).toBeVisible({ timeout: 10000 });
+        stepLogger.info('Duplicate email error message verified');
+        await takeScreenshot(page, 'duplicate-email-error');
+      });
+    });
+
+  test('signup rejects duplicate email regardless of name',
+    { tag: '@regression' },
+    async ({ page }) => {
+      await annotate({
+        story: 'Duplicate email rejection',
+        severity: Severity.NORMAL,
+        description: 'Different name with same email still rejected',
+      });
+
+      await test.step('Fill signup with different name but same email', async () => {
+        await page.fill('input[data-qa="signup-name"]', `Completely Different Name ${randomString(4)}`);
+        await page.fill('input[data-qa="signup-email"]', existingUser.email);
+      });
+
+      await test.step('Submit and verify error', async () => {
+        await page.click('button[data-qa="signup-button"]');
+
+        const errorText = page.locator('p:has-text("Email Address already exist!")');
+        await expect(errorText).toBeVisible({ timeout: 10000 });
+        stepLogger.info('Duplicate email rejected even with different name');
+      });
+    });
 });

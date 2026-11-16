@@ -69,23 +69,23 @@ export default defineConfig({
         },
       },
     },
-    // {
-    //   name: 'ui-firefox',
-    //   testMatch: ['**/tests/ui/**/*.spec.ts'],
-    //   use: {
-    //     ...devices['Desktop Firefox'],
-    //     headless,
-    //     launchOptions: { slowMo },
-    //   },
-    // },
-    // {
-    //   name: 'ui-webkit',
-    //   testMatch: ['**/tests/ui/**/*.spec.ts'],
-    //   use: {
-    //     ...devices['Desktop Safari'],
-    //     headless,
-    //     launchOptions: { slowMo },
-    //   },
-    // },
+    {
+      name: 'ui-firefox',
+      testMatch: ['**/tests/ui/**/*.spec.ts'],
+      use: {
+        ...devices['Desktop Firefox'],
+        headless,
+        launchOptions: { slowMo },
+      },
+    },
+    {
+      name: 'ui-webkit',
+      testMatch: ['**/tests/ui/**/*.spec.ts'],
+      use: {
+        ...devices['Desktop Safari'],
+        headless,
+        launchOptions: { slowMo },
+      },
+    },
   ],
 });

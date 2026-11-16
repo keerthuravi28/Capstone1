@@ -10,26 +10,25 @@ export class ECommerceLoginPage extends BasePage {
   // ─── Selectors ───────────────────────────────────────────────────────────────
 
   // Login form - for existing users
-  private readonly loginEmailInput = this.page.locator('input[data-qa="login_email"]');
-  private readonly loginPasswordInput = this.page.locator('input[data-qa="login_password"]');
-  private readonly loginButton = this.page.locator('button[data-qa="login_button"]');
+  private readonly loginEmailInput = this.page.locator('input[data-qa="login-email"]');
+  private readonly loginPasswordInput = this.page.locator('input[data-qa="login-password"]');
+  private readonly loginButton = this.page.locator('button[data-qa="login-button"]');
 
   // Registration form - for new users
-  private readonly signupNameInput = this.page.locator('input[data-qa="signup_name"]');
-  private readonly signupEmailInput = this.page.locator('input[data-qa="signup_email"]');
-  private readonly signupButton = this.page.locator('button[data-qa="signup_button"]');
+  private readonly signupNameInput = this.page.locator('input[data-qa="signup-name"]');
+  private readonly signupEmailInput = this.page.locator('input[data-qa="signup-email"]');
+  private readonly signupButton = this.page.locator('button[data-qa="signup-button"]');
 
-  // Error messages
-  private readonly loginErrorMessage = this.page.locator('[data-qa*="login"][data-qa*="error"]');
-  private readonly signupErrorMessage = this.page.locator('[data-qa*="signup"][data-qa*="error"]');
-  private readonly generalErrorMessage = this.page.locator('div[class*="error"]').first();
+  // Error messages (site renders errors as styled <p> tags, not data-qa elements)
+  private readonly loginErrorMessage = this.page.locator('.login-form p[style*="color: red"], .login-form p:has-text("incorrect")');
+  private readonly signupErrorMessage = this.page.locator('.signup-form p[style*="color: red"], p:has-text("Email Address already exist")');
+  private readonly generalErrorMessage = this.page.locator('p[style*="color: red"]').first();
 
   // Form sections
-  private readonly loginFormSection = this.page.locator('div:has-text("Login to your account")');
-  private readonly signupFormSection = this.page.locator('div:has-text("New User Signup!")');
+  private readonly loginFormSection = this.page.locator('.login-form');
+  private readonly signupFormSection = this.page.locator('.signup-form');
 
   // Page elements
-  private readonly pageTitle = this.page.locator('h1:has-text("Automation Exercise")');
   private readonly loginPageHeading = this.page.locator('h2:has-text("Login to your account")');
 
   constructor(page: Page) {
@@ -156,7 +155,7 @@ export class ECommerceLoginPage extends BasePage {
   }
 
   async assertPageTitle(): Promise<void> {
-    await this.assertVisible(this.pageTitle, 'Page title should be visible');
+    await this.assertTitle(/Automation Exercise/);
   }
 
   async assertLoginHeading(): Promise<void> {

@@ -14,10 +14,10 @@ export class AccountPage extends BasePage {
   private readonly logoutLink = this.page.locator('a[href*="logout"]');
   private readonly deleteAccountLink = this.page.locator('a:has-text("Delete Account")');
 
-  // Account info display
-  private readonly accountNameDisplay = this.page.locator('b:has-text("Account")').first();
-  private readonly userGreeting = this.page.locator('text=/Logged in as/');
-  private readonly accountSidebar = this.page.locator('div.account-form');
+  // Account info display (site shows logged-in state in the top nav bar)
+  private readonly accountNameDisplay = this.page.locator('li:has-text("Logged in as") b');
+  private readonly userGreeting = this.page.locator('li:has-text("Logged in as")');
+  private readonly loggedInIndicator = this.page.locator('li:has-text("Logged in as")');
 
   // Account menu
   private readonly accountMenu = this.page.locator('div[class*="account"] a, li a[href*="account"]');
@@ -35,9 +35,9 @@ export class AccountPage extends BasePage {
   // ─── Navigation ──────────────────────────────────────────────────────────────
 
   async goto(): Promise<void> {
-    await this.navigate('/account');
-    await this.waitForVisible(this.accountSidebar);
-    pageLogger.info('Account page loaded');
+    await this.navigate('/');
+    await this.waitForVisible(this.loggedInIndicator, 15000);
+    pageLogger.info('Logged-in home page loaded');
   }
 
   // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -85,8 +85,7 @@ export class AccountPage extends BasePage {
   // ─── Assertions ───────────────────────────────────────────────────────────────
 
   async assertOnAccountPage(): Promise<void> {
-    await this.assertVisible(this.accountSidebar, 'Account sidebar should be visible');
-    await this.assertUrl(/account/);
+    await this.assertVisible(this.loggedInIndicator, 'Logged in indicator should be visible');
   }
 
   async assertUserLoggedIn(userName?: string): Promise<void> {
