@@ -42,8 +42,17 @@ export class ProductsPage extends BasePage {
   }
 
   async goto(): Promise<void> {
-    await this.navigate('/products');
-    // wait for at least one product card to show up
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await this.navigate('/products');
+      try {
+        await this.productCards.first().waitFor({ state: 'visible', timeout: 15000 });
+        pageLogger.info('Products page loaded');
+        return;
+      } catch {
+        pageLogger.warn(`Products page attempt ${attempt}/3 — content not visible, reloading`);
+        if (attempt < 3) await this.page.reload({ waitUntil: 'domcontentloaded' });
+      }
+    }
     await this.productCards.first().waitFor({ state: 'visible', timeout: 30000 });
     pageLogger.info('Products page loaded');
   }

@@ -29,6 +29,15 @@ type ECommerceFixtures = {
  * Usage: import { test } from '@fixtures/ecommerce-fixtures'; in spec files.
  */
 export const test = base.extend<ECommerceFixtures>({
+  // block ad and tracking domains that trigger consent overlays on CI runner IPs
+  page: async ({ page }, use) => {
+    await page.route(
+      /(googlesyndication|doubleclick|adservice|google-analytics|googletagmanager|consent\.google|pagead|aswpsdkus|googleads)/,
+      route => route.abort(),
+    );
+    await use(page);
+  },
+
   registrationPage: async ({ page }, use) => {
     const registrationPage = new RegistrationPage(page);
     await use(registrationPage);

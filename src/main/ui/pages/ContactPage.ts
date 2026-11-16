@@ -28,8 +28,18 @@ export class ContactPage extends BasePage {
   }
 
   async goto(): Promise<void> {
-    await this.navigate('/contact_us');
-    await this.getInTouchHeading.waitFor({ state: 'visible', timeout: 5000 });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await this.navigate('/contact_us');
+      try {
+        await this.getInTouchHeading.waitFor({ state: 'visible', timeout: 10000 });
+        pageLogger.info('Contact Us page loaded');
+        return;
+      } catch {
+        pageLogger.warn(`Contact page attempt ${attempt}/3 — heading not visible, reloading`);
+        if (attempt < 3) await this.page.reload({ waitUntil: 'domcontentloaded' });
+      }
+    }
+    await this.getInTouchHeading.waitFor({ state: 'visible', timeout: 15000 });
     pageLogger.info('Contact Us page loaded');
   }
 
