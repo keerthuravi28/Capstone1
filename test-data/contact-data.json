@@ -1,120 +1,20 @@
 {
-  "validSubmissions": [
-    {
-      "name": "John Doe",
-      "email": "john.doe@example.com",
-      "subject": "Product Inquiry",
-      "message": "I would like to know more about your products.",
-      "description": "Valid contact form submission"
-    },
-    {
-      "name": "Jane Smith",
-      "email": "jane.smith@example.com",
-      "subject": "Order Support",
-      "message": "I have a question about my recent order. Could you please help me?",
-      "description": "Valid support inquiry"
-    },
-    {
-      "name": "O'Brien-Smith",
-      "email": "special.chars+test@example.co.uk",
-      "subject": "Special Characters Test",
-      "message": "Testing with: @#$%^&*()_+-=[]{}|;:',.<>?/`~",
-      "description": "Valid submission with special characters"
-    }
-  ],
-  "invalidSubmissions": [
-    {
-      "name": "",
-      "email": "test@example.com",
-      "subject": "Test",
-      "message": "Test message",
-      "expectedError": "Name is required",
-      "description": "Missing name field"
-    },
-    {
-      "name": "Test User",
-      "email": "",
-      "subject": "Test",
-      "message": "Test message",
-      "expectedError": "Email is required",
-      "description": "Missing email field"
-    },
-    {
-      "name": "Test User",
-      "email": "invalid-email",
-      "subject": "Test",
-      "message": "Test message",
-      "expectedError": "Invalid email format",
-      "description": "Invalid email format"
-    },
-    {
-      "name": "Test User",
-      "email": "test@example.com",
-      "subject": "",
-      "message": "Test message",
-      "expectedError": "Subject is required",
-      "description": "Missing subject field"
-    },
-    {
-      "name": "Test User",
-      "email": "test@example.com",
-      "subject": "Test",
-      "message": "",
-      "expectedError": "Message is required",
-      "description": "Missing message field"
-    }
-  ],
-  "fieldValidations": [
-    {
-      "field": "name",
-      "type": "text",
-      "maxLength": 100,
-      "testValue": "A",
-      "description": "Name field accepts text input"
-    },
-    {
-      "field": "email",
-      "type": "email",
-      "validFormats": ["user@example.com", "first.last+tag@domain.co.uk"],
-      "invalidFormats": ["plainaddress", "@example.com", "user@", "user space@example.com"],
-      "description": "Email field validates email format"
-    },
-    {
-      "field": "subject",
-      "type": "text",
-      "maxLength": 100,
-      "testValue": "Test Subject",
-      "description": "Subject field accepts text input"
-    },
-    {
-      "field": "message",
-      "type": "textarea",
-      "maxLength": 5000,
-      "testValue": "This is a test message",
-      "description": "Message field accepts multiline text"
-    }
-  ],
-  "edgeCases": [
-    {
-      "name": "Very Long Name With Many Characters In It",
-      "email": "test@example.com",
-      "subject": "Subject Line That Is Also Very Long And Contains Multiple Words",
-      "message": "This is a very long message that contains a lot of text to test the maximum length handling of the form. Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-      "description": "Test with long text values"
-    },
-    {
-      "name": "   Spaces   ",
-      "email": "test@example.com",
-      "subject": "   Test   ",
-      "message": "   Message with spaces   ",
-      "description": "Test whitespace handling"
-    },
-    {
-      "name": "123456789",
-      "email": "test@example.com",
-      "subject": "Numbers in Name",
-      "message": "Testing with numbers 1234567890",
-      "description": "Test with numeric values"
-    }
+  "validSubmission": {
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "subject": "Product Inquiry",
+    "message": "I would like to know more about your return policy."
+  },
+  "specialChars": {
+    "name": "O'Brien-Smith",
+    "email": "obrien@test.com",
+    "subject": "Name test",
+    "message": "Testing special characters in name field."
+  },
+  "invalidEmails": [
+    "not-an-email",
+    "missing@",
+    "@nodomain.com",
+    "spaces in@email.com"
   ]
 }

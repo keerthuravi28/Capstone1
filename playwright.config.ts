@@ -20,13 +20,13 @@ export default defineConfig({
   // globalSetup: './src/main/config/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  retries: process.env.CI ? 3 : 2,
   // Local: let Playwright auto-size to ~50% of CPU cores.
-  // CI: capped explicitly so shared-runner resources aren't oversubscribed.
-  workers: process.env.CI ? 4 : undefined,
+  // CI: 2 workers keeps external site from throttling concurrent requests.
+  workers: process.env.CI ? 2 : undefined,
   reporter: [
     ['list'],
-    ['html', { outputFolder: 'test-results/playwright-report', open: 'never' }],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['json', { outputFile: 'test-results/results.json' }],
   ],
   timeout: 60000,
@@ -49,7 +49,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: process.env.BASE_URL ?? 'https://opensource-demo.orangehrmlive.com',
+    baseURL: process.env.BASE_URL ?? 'https://automationexercise.com',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

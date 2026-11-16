@@ -117,7 +117,7 @@ test.describe('E-Commerce Login @smoke @critical', () => {
         });
 
         await test.step('Verify successful login', async () => {
-          let accountPage = new AccountPage(page);
+          const accountPage = new AccountPage(page);
           await accountPage.goto();
           await accountPage.assertOnAccountPage();
           await accountPage.assertUserLoggedIn();
@@ -262,7 +262,7 @@ test.describe('E-Commerce Login @smoke @critical', () => {
       });
 
       await test.step('Verify successful login', async () => {
-        let accountPage = new AccountPage(page);
+        const accountPage = new AccountPage(page);
         await accountPage.goto();
         await accountPage.assertOnAccountPage();
         stepLogger.info('Case-insensitive email login verified');
@@ -371,7 +371,7 @@ test.describe('E-Commerce Logout @critical', () => {
         });
         await parameter('email', user.email);
 
-        let loginPage = new ECommerceLoginPage(page);
+        const loginPage = new ECommerceLoginPage(page);
 
         await test.step('Login as user', async () => {
           await loginPage.goto();
@@ -421,7 +421,7 @@ test.describe('E-Commerce Logout @critical', () => {
         severity: Severity.MINOR,
       });
 
-      let loginPage = new ECommerceLoginPage(page);
+      const loginPage = new ECommerceLoginPage(page);
       const user = registrationData.existingUsers[0];
 
       await test.step('Login user', async () => {
@@ -450,7 +450,7 @@ test.describe('E-Commerce Logout @critical', () => {
         description: 'Verify browser back button cannot restore logged out session',
       });
 
-      let loginPage = new ECommerceLoginPage(page);
+      const loginPage = new ECommerceLoginPage(page);
       const user = registrationData.existingUsers[0];
 
       await test.step('Login user', async () => {
@@ -487,7 +487,7 @@ test.describe('E-Commerce Logout @critical', () => {
         description: 'System handles multiple logout clicks without error',
       });
 
-      let loginPage = new ECommerceLoginPage(page);
+      const loginPage = new ECommerceLoginPage(page);
       const user = registrationData.existingUsers[0];
 
       await test.step('Login user', async () => {
@@ -518,8 +518,8 @@ test.describe('Login + Logout Full Cycle @smoke', () => {
         severity: Severity.CRITICAL,
       });
 
-      let loginPage = new ECommerceLoginPage(page);
-      let accountPage = new AccountPage(page);
+      const loginPage = new ECommerceLoginPage(page);
+      const accountPage = new AccountPage(page);
 
       for (let i = 0; i < Math.min(2, registrationData.existingUsers.length); i++) {
         const user = registrationData.existingUsers[i];

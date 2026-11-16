@@ -1,66 +1,9 @@
 {
-  "orderValidations": [
-    {
-      "scenario": "order_placed_successfully",
-      "expectedStatus": "success",
-      "expectedElements": ["orderNumber", "orderTotal", "confirmationMessage"],
-      "description": "Verify successful order placement shows all required elements"
-    },
-    {
-      "scenario": "order_confirmation_page",
-      "expectedUrl": "/order_placed",
-      "expectedElements": ["confirmationMessage", "invoiceButton"],
-      "description": "Verify user is taken to order confirmation page"
-    },
-    {
-      "scenario": "order_number_format",
-      "expectedFormat": "numeric",
-      "minLength": 1,
-      "description": "Verify order number is in valid format"
-    }
-  ],
-  "orderHistoryTests": [
-    {
-      "scenario": "view_order_history",
-      "expectedUrl": "/orders",
-      "expectedMinOrders": 0,
-      "description": "User can view their order history"
-    },
-    {
-      "scenario": "view_single_order",
-      "expectedElements": ["orderDetails", "orderItems", "orderTotal"],
-      "description": "User can view individual order details"
-    },
-    {
-      "scenario": "multiple_orders",
-      "expectedMinOrders": 2,
-      "description": "User can view multiple orders in history"
-    }
-  ],
-  "invoiceTests": [
-    {
-      "scenario": "download_invoice",
-      "expectedFileType": "pdf",
-      "description": "User can download order invoice as PDF"
-    },
-    {
-      "scenario": "invoice_contains_details",
-      "expectedElements": ["orderNumber", "orderDate", "items", "total"],
-      "description": "Invoice contains all required order details"
-    }
-  ],
-  "orderStatusTests": [
-    {
-      "status": "Processing",
-      "description": "Order in processing state"
-    },
-    {
-      "status": "Shipped",
-      "description": "Order has been shipped"
-    },
-    {
-      "status": "Delivered",
-      "description": "Order has been delivered"
-    }
-  ]
+  "testCard": {
+    "nameOnCard": "Test User",
+    "cardNumber": "4100000000000000",
+    "cvc": "123",
+    "expiryMonth": "12",
+    "expiryYear": "2030"
+  }
 }

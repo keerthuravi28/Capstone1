@@ -2,188 +2,168 @@ import { Page } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { pageLogger } from '../../shared/utils/logger';
 
-/**
- * ABOUTME: ProductsPage encapsulates product catalog and search interactions.
- * ABOUTME: Handles product viewing, filtering, and adding items to cart.
- */
+// ABOUTME: Page object for the products catalog and search on automationexercise.com.
+// ABOUTME: Covers product listing, search, category filtering, and add-to-cart actions.
+
 export class ProductsPage extends BasePage {
-  // Selectors - tested against automationexercise.com v2.x
-  // Note: The site uses inconsistent class names and nesting, so we have fallbacks
 
-  private readonly productsContainer = this.page.locator('.productinfo, [class*="product"]');
+  // search field id is "search_product" - confirmed via devtools
+  private readonly searchInput = this.page.locator('input#search_product');
+  private readonly searchBtn = this.page.locator('#submit_search');
 
-  // Search field - tested multiple variants as they changed in different page states
-  private readonly searchInput = this.page.locator('input[id="search_product"]');
-  private readonly searchButton = this.page.locator('#submit_search');
+  // .productinfo wraps each product card - price + name + overlay with "Add to cart"
+  private readonly productCards = this.page.locator('.productinfo');
 
-  // Product items - class name is .productinfo but sometimes wrapped in different divs
-  private readonly productItems = this.page.locator('.productinfo');
+  // product names live in <p> inside .productinfo
+  private readonly productNames = this.page.locator('.productinfo p');
 
-  // Product title - found inside <p> tags within productinfo divs
-  // Initially tried p:first-child but that was too fragile
-  private readonly productTitle = this.page.locator('.productinfo p');
+  private readonly viewProductLinks = this.page.locator('a[href*="/product_details/"]');
 
-  private readonly viewProductLink = this.page.locator('a[href*="/product/"]');
+  // each product card has TWO "Add to cart" links: one in .productinfo (visible),
+  // one in .product-overlay (shown on hover). Scope to .productinfo to avoid duplicates.
+  private readonly addToCartBtns = this.page.locator('.productinfo a.add-to-cart');
 
-  // Add to cart - appears as <a> tag, not button (site quirk)
-  private readonly addToCartButton = this.page.locator('a:has-text("Add to cart")');
+  private readonly prices = this.page.locator('.productinfo h2');
 
-  // Product price - site puts it in span with class "productprice"
-  private readonly productPrice = this.page.locator('.productprice');
+  // the site shows "SEARCHED PRODUCTS" heading when search returns results,
+  // but no explicit "no results" text - just an empty container
+  private readonly searchedProductsHeading = this.page.locator('h2:has-text("Searched Products")');
 
-  private readonly productImage = this.page.locator('img[alt*="product"]');
+  // modal that pops up after adding to cart - has class "modal" and shows "Added!"
+  private readonly addedModal = this.page.locator('.modal-dialog:has-text("Added")');
+  private readonly continueShoppingBtn = this.page.locator('.modal-dialog button:has-text("Continue Shopping")');
+  private readonly viewCartLink = this.page.locator('.modal-dialog a:has-text("View Cart")');
 
-  // No results message - tested different possible variations
-  private readonly noProductsMessage = this.page.locator('text=/No products found|No items|sorry/i');
-
-  // Cart badge - not always visible on products page
-  private readonly cartBadge = this.page.locator('.cart-count');
-
-  private readonly continueShoppingButton = this.page.locator('button:has-text("Continue Shopping")');
-
-  // Category links - found in sidebar, href contains "/category_products/"
-  private readonly categoryLink = this.page.locator('a[href*="/category_products/"]');
+  // sidebar category links
+  private readonly categoryPanel = this.page.locator('#accordian');
 
   constructor(page: Page) {
     super(page);
   }
 
-  // ─── Navigation ──────────────────────────────────────────────────────────────
-
   async goto(): Promise<void> {
     await this.navigate('/products');
-    await this.waitForVisible(this.productItems.first());
+    // wait for at least one product card to show up
+    await this.productCards.first().waitFor({ state: 'visible', timeout: 30000 });
     pageLogger.info('Products page loaded');
   }
 
-  async gotoAllProducts(): Promise<void> {
-    await this.navigate('/products');
-    pageLogger.info('Navigated to all products');
+  async searchFor(term: string): Promise<void> {
+    await this.fill(this.searchInput, term, 'search box');
+    await this.click(this.searchBtn, 'search button');
+    // page reloads with results - wait for heading
+    await this.searchedProductsHeading.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
+      pageLogger.warn(`Search heading didn't appear for term: ${term}`);
+    });
+    pageLogger.info(`Searched for: ${term}`);
   }
 
-  // ─── Search Actions ──────────────────────────────────────────────────────────
-
-  async searchProduct(productName: string): Promise<void> {
-    await this.fill(this.searchInput, productName, 'Search input');
-    await this.click(this.searchButton, 'Search button');
-    pageLogger.info(`Searched for product: ${productName}`);
+  async clearSearchField(): Promise<void> {
+    await this.searchInput.clear();
   }
 
-  async clearSearch(): Promise<void> {
-    await this.fill(this.searchInput, '', 'Clear search');
+  async getVisibleProductCount(): Promise<number> {
+    return this.productCards.count();
   }
 
-  // ─── Product Actions ─────────────────────────────────────────────────────────
-
-  async getProductCount(): Promise<number> {
-    return this.getCount(this.productItems);
+  async getProductNames(): Promise<string[]> {
+    const names: string[] = [];
+    const count = await this.productNames.count();
+    for (let i = 0; i < count; i++) {
+      const text = await this.productNames.nth(i).innerText();
+      if (text.trim()) names.push(text.trim());
+    }
+    return names;
   }
 
-  async viewProductByIndex(index: number): Promise<void> {
-    const product = this.productItems.nth(index);
-    await this.click(product, `Product at index ${index}`);
-    pageLogger.info(`Viewed product at index ${index}`);
+  // each product wrapper has an "Add to cart" link below the product image.
+  // use evaluate to trigger DOM .click() directly - bypasses viewport/overlay
+  // issues from ads AND fires jQuery event handlers that dispatchEvent misses.
+  async addFirstProductToCart(): Promise<void> {
+    const btn = this.addToCartBtns.first();
+    await btn.waitFor({ state: 'attached', timeout: 15000 });
+    await btn.evaluate((el) => (el as HTMLElement).click());
+    await this.page.waitForTimeout(1000);
+    pageLogger.info('Added first product to cart');
   }
 
-  async viewProductByName(productName: string): Promise<void> {
-    const product = this.page.locator(`a:has-text("${productName}")`);
-    await this.click(product, `Product: ${productName}`);
-    pageLogger.info(`Viewed product: ${productName}`);
+  async addProductByIndex(idx: number): Promise<void> {
+    const btn = this.addToCartBtns.nth(idx);
+    await btn.waitFor({ state: 'attached', timeout: 15000 });
+    await btn.evaluate((el) => (el as HTMLElement).click());
+    await this.page.waitForTimeout(1000);
+    pageLogger.info(`Added product at index ${idx}`);
   }
 
-  async addProductToCart(): Promise<void> {
-    await this.click(this.addToCartButton, 'Add to cart button');
-    pageLogger.info('Product added to cart');
+  // after adding, a modal pops up - but it's flaky on this site (ads, slow AJAX).
+  // if it doesn't show, fall back to direct navigation.
+  async clickContinueShopping(): Promise<void> {
+    try {
+      await this.addedModal.waitFor({ state: 'visible', timeout: 5000 });
+      await this.click(this.continueShoppingBtn, 'Continue Shopping');
+      await this.addedModal.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+    } catch {
+      pageLogger.info('Modal did not appear, staying on products page');
+    }
   }
 
-  async addProductToCartByName(productName: string): Promise<void> {
-    // Find and add specific product by name
-    const productRow = this.page.locator(`:has-text("${productName}")`).first();
-    const addButton = productRow.locator('a:has-text("Add to cart"), button:has-text("Add to cart")');
-    await this.click(addButton, `Add ${productName} to cart`);
-    pageLogger.info(`Added ${productName} to cart`);
+  async clickViewCartFromModal(): Promise<void> {
+    try {
+      await this.addedModal.waitFor({ state: 'visible', timeout: 5000 });
+      await this.click(this.viewCartLink, 'View Cart link in modal');
+    } catch {
+      pageLogger.info('Modal did not appear, navigating to cart directly');
+      await this.navigate('/view_cart');
+    }
   }
 
-  async continueShoppingAfterAddToCart(): Promise<void> {
-    await this.click(this.continueShoppingButton, 'Continue Shopping button');
-    pageLogger.info('Continuing shopping');
+  async viewProductDetails(idx: number): Promise<void> {
+    await this.viewProductLinks.nth(idx).click();
+    pageLogger.info(`Opened product details for item ${idx}`);
   }
 
-  // ─── Filter & Category Actions ────────────────────────────────────────────────
-
-  async filterByCategory(category: string): Promise<void> {
-    const categoryButton = this.page.locator(`a:has-text("${category}")`);
-    await this.click(categoryButton, `Category: ${category}`);
-    pageLogger.info(`Filtered by category: ${category}`);
+  // expand a top-level category (Women, Men, Kids) in the sidebar accordion
+  async expandCategory(categoryName: string): Promise<void> {
+    const categoryHeader = this.categoryPanel.locator(`a:has-text("${categoryName}")`).first();
+    await categoryHeader.click();
+    // accordion animation takes a moment
+    await this.page.waitForTimeout(500);
+    pageLogger.info(`Expanded category: ${categoryName}`);
   }
 
-  async selectCategory(categoryName: string): Promise<void> {
-    const categoryLink = this.page.locator(`a[href*="category"]:has-text("${categoryName}")`);
-    await this.click(categoryLink, `Select ${categoryName}`);
-    pageLogger.info(`Selected category: ${categoryName}`);
-  }
-
-  // ─── Getters ─────────────────────────────────────────────────────────────────
-
-  async getFirstProductTitle(): Promise<string> {
-    const firstProduct = this.productTitle.first();
-    return this.getText(firstProduct);
+  // click a subcategory link (e.g. "Dress", "Tops" under "Women")
+  // subcategory names can repeat across categories (e.g. Women>Dress and Kids>Dress),
+  // so grab the first visible match since only the expanded panel is shown
+  async selectSubcategory(subcategoryName: string): Promise<void> {
+    const link = this.categoryPanel.locator(`a:has-text("${subcategoryName}")`).first();
+    await link.click();
+    pageLogger.info(`Selected subcategory: ${subcategoryName}`);
   }
 
   async getFirstProductPrice(): Promise<string> {
-    const firstPrice = this.productPrice.first();
-    return this.getText(firstPrice);
+    return (await this.prices.first().innerText()).trim();
   }
 
-  async getProductTitles(): Promise<string[]> {
-    const titles = await this.productTitle.all();
-    const titleList: string[] = [];
-    for (const title of titles) {
-      titleList.push(await this.getText(title));
-    }
-    return titleList;
+  // assertions
+
+  async assertProductsVisible(): Promise<void> {
+    const count = await this.getVisibleProductCount();
+    if (count === 0) throw new Error('Expected products to be visible but found none');
+    pageLogger.info(`${count} products visible on page`);
   }
 
-  async getCartCount(): Promise<string> {
-    return this.getText(this.cartBadge);
+  async assertSearchResultsShown(): Promise<void> {
+    await this.assertVisible(this.searchedProductsHeading, 'Searched Products heading');
   }
 
-  // ─── Assertions ───────────────────────────────────────────────────────────────
-
-  async assertProductsDisplayed(): Promise<void> {
-    await this.assertVisible(this.productItems.first(), 'Products should be displayed');
-    const count = await this.getProductCount();
-    pageLogger.info(`${count} products displayed`);
-  }
-
-  async assertNoProductsFound(): Promise<void> {
-    await this.assertVisible(this.noProductsMessage, 'No products message should be visible');
-  }
-
-  async assertSearchResultsNotEmpty(): Promise<void> {
-    const count = await this.getProductCount();
-    this.page.context();
-    if (count === 0) {
-      await this.assertNoProductsFound();
-    }
-  }
-
-  async assertProductTitleVisible(productName: string): Promise<void> {
-    const productLocator = this.page.locator(`text=${productName}`);
-    await this.assertVisible(productLocator, `Product ${productName} should be visible`);
-  }
-
-  async assertAddToCartButtonVisible(): Promise<void> {
-    await this.assertVisible(this.addToCartButton, 'Add to cart button should be visible');
+  async assertNoSearchResults(): Promise<void> {
+    // site doesn't show "no results" text explicitly, just an empty product list
+    await this.assertSearchResultsShown();
+    const count = await this.getVisibleProductCount();
+    if (count > 0) throw new Error(`Expected 0 results but found ${count}`);
   }
 
   async assertOnProductsPage(): Promise<void> {
-    await this.assertUrl(/products/);
-    await this.assertProductsDisplayed();
-  }
-
-  async assertCategoryFilterExists(category: string): Promise<void> {
-    const categoryFilter = this.page.locator(`a:has-text("${category}")`);
-    await this.assertVisible(categoryFilter, `Category ${category} filter should exist`);
+    await this.assertUrl(/\/products/);
   }
 }

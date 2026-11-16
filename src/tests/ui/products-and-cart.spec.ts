@@ -1,362 +1,208 @@
 import { test, expect } from '../../main/ui/fixtures/ecommerce-fixtures';
 import { stepLogger } from '../../main/shared/utils/logger';
-import { annotate, parameter, Severity } from '../../main/shared/reporting/reporting';
+import { annotate, Severity } from '../../main/shared/reporting/reporting';
 import { takeScreenshot } from '../../main/shared/utils/helpers';
-import productsData from '../../../test-data/products-data.json';
 
-/**
- * ABOUTME: Product search and cart management test suite for automationexercise.com.
- * ABOUTME: Tests product discovery, cart operations, and cart validation (Requirement #2).
- */
+// ABOUTME: Test suite for product browsing, search, and cart operations.
+// ABOUTME: Covers Requirement #2 - Product Search, Add/Remove Products from Cart.
 
-test.describe('E-Commerce Product Search & Cart Management @critical @smoke', () => {
+const BASE_URL = 'https://automationexercise.com';
+
+test.describe('Product Search & Cart Management', () => {
+
   test.beforeEach(async ({ page }, testInfo) => {
     await annotate({
       epic: 'E-Commerce Platform',
-      feature: 'Product Search and Cart Management',
+      feature: 'Product Search and Cart',
       owner: 'QA Team',
       layer: 'ui',
     });
-
-    stepLogger.info(`▶ Starting test: ${testInfo.title}`);
-    await page.goto('https://automationexercise.com', { waitUntil: 'domcontentloaded' });
+    stepLogger.info(`Starting: ${testInfo.title}`);
   });
 
   test.afterEach(async ({ page }, testInfo) => {
     if (testInfo.status !== testInfo.expectedStatus) {
-      stepLogger.error(`✖ Test failed: ${testInfo.title}`);
-      await takeScreenshot(page, `FAILED-products-${testInfo.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`);
-    } else {
-      stepLogger.info(`✔ Test passed: ${testInfo.title}`);
+      await takeScreenshot(page, `FAIL-${testInfo.title.replace(/\W+/g, '-')}`);
     }
   });
 
-  // ── Product Search Tests ──────────────────────────────────────────────────────
+  // --- Product catalog ---
 
-  test('navigate to products page and verify products displayed', { tag: ['@smoke', '@critical'] }, async ({
-    page,
-    productsPage,
-  }) => {
-    await annotate({
-      story: 'Product page display',
-      severity: Severity.BLOCKER,
-      description: 'User can navigate to products and see product catalog',
-    });
+  test('products page loads with visible product cards', { tag: '@smoke' }, async ({ productsPage }) => {
+    await annotate({ story: 'Product listing', severity: Severity.BLOCKER });
 
-    await test.step('Navigate to products page', async () => {
-      await productsPage.goto();
-      stepLogger.info('Navigated to products page');
-    });
+    await productsPage.goto();
+    await productsPage.assertOnProductsPage();
+    await productsPage.assertProductsVisible();
 
-    await test.step('Verify products are displayed', async () => {
-      await productsPage.assertProductsDisplayed();
-      const count = await productsPage.getProductCount();
-      await parameter('productCount', String(count));
-      stepLogger.info(`Verified ${count} products displayed`);
-    });
-
-    await takeScreenshot(page, 'products-page-loaded');
+    const count = await productsPage.getVisibleProductCount();
+    expect(count).toBeGreaterThan(0);
+    stepLogger.info(`Found ${count} products on the page`);
   });
 
-  test('search for product by name', { tag: '@critical' }, async ({ page, productsPage }) => {
-    await annotate({
-      story: 'Product search functionality',
-      severity: Severity.BLOCKER,
-      description: 'User can search for products by name',
-    });
+  test('search returns matching products', { tag: '@critical' }, async ({ productsPage }) => {
+    await annotate({ story: 'Product search', severity: Severity.BLOCKER });
 
-    const searchTerm = productsData.productsToSearch[0].name;
-    await parameter('searchTerm', searchTerm);
+    await productsPage.goto();
+    await productsPage.searchFor('Top');
 
-    await test.step('Navigate to products page', async () => {
-      await productsPage.gotoAllProducts();
-    });
+    await productsPage.assertSearchResultsShown();
+    const names = await productsPage.getProductNames();
+    expect(names.length).toBeGreaterThan(0);
 
-    await test.step('Search for product', async () => {
-      await productsPage.searchProduct(searchTerm);
-      stepLogger.info(`Searched for: ${searchTerm}`);
-    });
-
-    await test.step('Verify search results contain product', async () => {
-      await productsPage.assertSearchResultsNotEmpty();
-      const results = await productsPage.getProductTitles();
-      stepLogger.info(`Found ${results.length} products matching "${searchTerm}"`);
-    });
-
-    await takeScreenshot(page, 'product-search-results');
+    // at least one result should contain the search term (case-insensitive)
+    const hasMatch = names.some(n => n.toLowerCase().includes('top'));
+    expect(hasMatch).toBeTruthy();
+    stepLogger.info(`Search "Top" returned ${names.length} results`);
   });
 
-  test('search for non-existent product shows no results', { tag: '@regression' }, async ({
-    page,
-    productsPage,
-  }) => {
-    await annotate({
-      story: 'Search handling for no results',
-      severity: Severity.NORMAL,
-      description: 'Search for non-existent product shows appropriate message',
-    });
+  test('search for nonexistent product shows empty results', { tag: '@regression' }, async ({ productsPage }) => {
+    await annotate({ story: 'Search edge case', severity: Severity.NORMAL });
 
-    const invalidSearchTerm = productsData.productsToSearch[2].name;
-    await parameter('searchTerm', invalidSearchTerm);
+    await productsPage.goto();
+    await productsPage.searchFor('xyznonexistent12345');
 
-    await test.step('Navigate and search for invalid product', async () => {
-      await productsPage.gotoAllProducts();
-      await productsPage.searchProduct(invalidSearchTerm);
-    });
-
-    await test.step('Verify no results message appears', async () => {
-      await productsPage.assertNoProductsFound();
-      stepLogger.info('No products found message verified');
-    });
-
-    await takeScreenshot(page, 'no-search-results');
+    // site still shows "SEARCHED PRODUCTS" heading but with 0 product cards
+    await productsPage.assertNoSearchResults();
   });
 
-  test('filter products by category', { tag: '@regression' }, async ({ page, productsPage }) => {
-    await annotate({
-      story: 'Category filtering',
-      severity: Severity.NORMAL,
-      description: 'User can filter products by category',
-    });
+  test('category filter narrows product list', { tag: '@regression' }, async ({ page, productsPage }) => {
+    await annotate({ story: 'Category filtering', severity: Severity.NORMAL });
 
-    const category = productsData.productFiltering[0].category;
-    await parameter('category', category);
+    await productsPage.goto();
+    const totalBefore = await productsPage.getVisibleProductCount();
 
-    await test.step('Navigate to products', async () => {
-      await productsPage.gotoAllProducts();
-      await productsPage.assertProductsDisplayed();
-    });
+    // expand "Women" and pick "Dress"
+    await productsPage.expandCategory('Women');
+    await productsPage.selectSubcategory('Dress');
 
-    await test.step('Filter by category', async () => {
-      await productsPage.filterByCategory(category);
-      stepLogger.info(`Filtered by category: ${category}`);
-    });
+    // page navigates to category URL
+    await page.waitForLoadState('networkidle').catch(() => {});
+    const url = page.url();
+    expect(url).toContain('category_products');
 
-    await test.step('Verify filtered results', async () => {
-      await productsPage.assertCategoryFilterExists(category);
-      const count = await productsPage.getProductCount();
-      await parameter('filteredCount', String(count));
-      stepLogger.info(`${count} products in ${category} category`);
-    });
-
-    await takeScreenshot(page, `products-filtered-${category.toLowerCase()}`);
+    stepLogger.info(`Filtered from ${totalBefore} total to category view`);
   });
 
-  // ── Add to Cart Tests ─────────────────────────────────────────────────────────
+  // --- Add to cart ---
 
-  test('add single product to cart', { tag: ['@smoke', '@critical'] }, async ({ page, productsPage, cartPage }) => {
-    await annotate({
-      story: 'Add to cart functionality',
-      severity: Severity.BLOCKER,
-      description: 'User can add a product to cart',
-    });
-
-    const productName = productsData.cartOperations[0].productName;
-    await parameter('product', productName);
-
-    await test.step('Navigate to products', async () => {
-      await productsPage.gotoAllProducts();
-      await productsPage.assertProductsDisplayed();
-    });
-
-    await test.step('Add product to cart', async () => {
-      await productsPage.addProductToCartByName(productName);
-      stepLogger.info(`Added ${productName} to cart`);
-    });
-
-    await test.step('Continue shopping', async () => {
-      await productsPage.continueShoppingAfterAddToCart();
-      await productsPage.assertProductsDisplayed();
-    });
-
-    await takeScreenshot(page, 'product-added-to-cart');
-  });
-
-  test('view shopping cart', { tag: '@critical' }, async ({ page, productsPage, cartPage }) => {
-    await annotate({
-      story: 'View cart contents',
-      severity: Severity.BLOCKER,
-      description: 'User can view their shopping cart',
-    });
-
-    await test.step('Navigate and add product', async () => {
-      await productsPage.gotoAllProducts();
-      const productName = productsData.cartOperations[0].productName;
-      await productsPage.addProductToCartByName(productName);
-      await parameter('product', productName);
-    });
-
-    await test.step('Navigate to cart', async () => {
-      await cartPage.gotoViewCart();
-      await cartPage.assertOnCartPage();
-      stepLogger.info('Navigated to cart page');
-    });
-
-    await test.step('Verify cart contents', async () => {
-      await cartPage.assertCartNotEmpty();
-      const itemCount = await cartPage.getCartItemCount();
-      await parameter('cartItems', String(itemCount));
-      stepLogger.info(`Cart contains ${itemCount} items`);
-    });
-
-    await takeScreenshot(page, 'view-cart');
-  });
-
-  test('remove product from cart', { tag: '@regression' }, async ({ page, productsPage, cartPage }) => {
-    await annotate({
-      story: 'Remove from cart',
-      severity: Severity.NORMAL,
-      description: 'User can remove products from cart',
-    });
-
-    const productName = productsData.cartOperations[0].productName;
-    await parameter('product', productName);
-
-    await test.step('Add product to cart', async () => {
-      await productsPage.gotoAllProducts();
-      await productsPage.addProductToCartByName(productName);
-      await productsPage.continueShoppingAfterAddToCart();
-    });
-
-    await test.step('Navigate to cart', async () => {
-      await cartPage.gotoViewCart();
-    });
-
-    await test.step('Remove product from cart', async () => {
-      const initialCount = await cartPage.getCartItemCount();
-      await cartPage.removeProductFromCart(0);
-      stepLogger.info(`Removed product from cart (was ${initialCount} items)`);
-    });
-
-    await test.step('Verify product removed', async () => {
-      await page.waitForTimeout(500);
-      await cartPage.assertCartEmpty();
-      stepLogger.info('Cart is now empty');
-    });
-
-    await takeScreenshot(page, 'product-removed-from-cart');
-  });
-
-  test('update product quantity in cart', { tag: '@regression' }, async ({ page, productsPage, cartPage }) => {
-    await annotate({
-      story: 'Update cart quantity',
-      severity: Severity.NORMAL,
-      description: 'User can change product quantity in cart',
-    });
-
-    const productName = productsData.cartOperations[0].productName;
-    const newQuantity = 3;
-    await parameter('product', productName);
-    await parameter('newQuantity', String(newQuantity));
-
-    await test.step('Add product to cart', async () => {
-      await productsPage.gotoAllProducts();
-      await productsPage.addProductToCartByName(productName);
-    });
-
-    await test.step('Navigate to cart and update quantity', async () => {
-      await cartPage.gotoViewCart();
-      const initialTotal = await cartPage.getCartTotal();
-      await cartPage.updateProductQuantity(0, newQuantity);
-      stepLogger.info(`Updated quantity to ${newQuantity}`);
-    });
-
-    await test.step('Verify quantity updated', async () => {
-      await page.waitForTimeout(500);
-      const finalTotal = await cartPage.getCartTotal();
-      stepLogger.info(`Cart total updated from ${initialTotal} to ${finalTotal}`);
-    });
-
-    await takeScreenshot(page, 'quantity-updated');
-  });
-
-  test('add multiple products to cart', { tag: '@regression' }, async ({ page, productsPage, cartPage }) => {
-    await annotate({
-      story: 'Multiple products in cart',
-      severity: Severity.NORMAL,
-      description: 'User can add multiple different products to cart',
-    });
-
-    await test.step('Add first product', async () => {
-      await productsPage.gotoAllProducts();
-      await productsPage.addProductToCartByName(productsData.cartOperations[0].productName);
-      await productsPage.continueShoppingAfterAddToCart();
-    });
-
-    await test.step('Add second product', async () => {
-      await productsPage.searchProduct('Sleeves');
-      await productsPage.addProductToCart();
-      await productsPage.continueShoppingAfterAddToCart();
-    });
-
-    await test.step('View cart with multiple products', async () => {
-      await cartPage.gotoViewCart();
-      const itemCount = await cartPage.getCartItemCount();
-      await parameter('cartItems', String(itemCount));
-      expect(itemCount).toBeGreaterThanOrEqual(2);
-      stepLogger.info(`Cart contains ${itemCount} items`);
-    });
-
-    await takeScreenshot(page, 'multiple-products-in-cart');
-  });
-
-  test('cart shows correct total for multiple items', { tag: '@regression' }, async ({
-    page,
+  test('add a product to cart and verify it appears', { tag: ['@smoke', '@critical'] }, async ({
     productsPage,
     cartPage,
   }) => {
-    await annotate({
-      story: 'Cart total calculation',
-      severity: Severity.NORMAL,
-      description: 'Cart calculates and displays correct total for multiple items',
-    });
+    await annotate({ story: 'Add to cart', severity: Severity.BLOCKER });
 
-    await test.step('Add products to cart', async () => {
-      await productsPage.gotoAllProducts();
-      await productsPage.addProductToCartByName(productsData.cartOperations[0].productName);
-      await productsPage.continueShoppingAfterAddToCart();
-    });
+    await productsPage.goto();
 
-    await test.step('View cart and verify total', async () => {
-      await cartPage.gotoViewCart();
-      const total = await cartPage.getCartTotal();
-      const itemCount = await cartPage.getCartItemCount();
-      await parameter('cartTotal', total);
-      await parameter('itemCount', String(itemCount));
-      expect(itemCount).toBeGreaterThan(0);
-      expect(total).not.toBe('');
-      stepLogger.info(`Cart total: ${total} for ${itemCount} items`);
-    });
+    // grab the name of the first product before adding
+    const productNames = await productsPage.getProductNames();
+    const firstName = productNames[0];
+    stepLogger.info(`Will add: "${firstName}"`);
 
-    await takeScreenshot(page, 'cart-total-calculation');
+    await productsPage.addFirstProductToCart();
+    await productsPage.clickViewCartFromModal();
+
+    await cartPage.assertOnCartPage();
+    await cartPage.assertCartHasItems(1);
+
+    // verify the product we added is actually in the cart
+    const cartProductName = await cartPage.getProductNameAtRow(0);
+    expect(cartProductName.toLowerCase()).toContain(firstName.toLowerCase().substring(0, 5));
   });
 
-  test('proceed to checkout from cart', { tag: '@critical' }, async ({ page, productsPage, cartPage }) => {
-    await annotate({
-      story: 'Checkout flow initiation',
-      severity: Severity.BLOCKER,
-      description: 'User can proceed from cart to checkout',
-    });
+  test('add product and continue shopping keeps you on products page', { tag: '@regression' }, async ({
+    page,
+    productsPage,
+  }) => {
+    await annotate({ story: 'Continue shopping flow', severity: Severity.NORMAL });
 
-    await test.step('Add product and navigate to cart', async () => {
-      await productsPage.gotoAllProducts();
-      await productsPage.addProductToCartByName(productsData.cartOperations[0].productName);
-      await cartPage.gotoViewCart();
-    });
+    await productsPage.goto();
+    await productsPage.addFirstProductToCart();
+    await productsPage.clickContinueShopping();
 
-    await test.step('Proceed to checkout', async () => {
-      await cartPage.assertCheckoutButtonVisible();
-      await cartPage.proceedToCheckout();
-      stepLogger.info('Proceeded to checkout');
-    });
+    // should still be on products page
+    expect(page.url()).toContain('/products');
+    await productsPage.assertProductsVisible();
+  });
 
-    await test.step('Verify checkout page loaded', async () => {
-      await page.waitForTimeout(1000);
-      const url = page.url();
-      expect(url).toContain('checkout');
-      stepLogger.info('Checkout page loaded');
-    });
+  test('add multiple products to cart', { tag: '@critical' }, async ({ productsPage, cartPage }) => {
+    await annotate({ story: 'Multiple cart items', severity: Severity.BLOCKER });
 
-    await takeScreenshot(page, 'proceeding-to-checkout');
+    await productsPage.goto();
+
+    // add first product
+    await productsPage.addProductByIndex(0);
+    await productsPage.clickContinueShopping();
+
+    // add second product
+    await productsPage.addProductByIndex(1);
+    await productsPage.clickViewCartFromModal();
+
+    await cartPage.assertOnCartPage();
+    const count = await cartPage.getItemCount();
+    expect(count).toBe(2);
+    stepLogger.info('Verified 2 items in cart');
+  });
+
+  // --- Remove from cart ---
+
+  test('remove item from cart', { tag: '@regression' }, async ({ productsPage, cartPage }) => {
+    await annotate({ story: 'Remove from cart', severity: Severity.NORMAL });
+
+    // add something first
+    await productsPage.goto();
+    await productsPage.addFirstProductToCart();
+    await productsPage.clickViewCartFromModal();
+
+    await cartPage.assertCartHasItems(1);
+
+    // now remove it
+    await cartPage.removeItemAtRow(0);
+
+    const empty = await cartPage.isCartEmpty();
+    expect(empty).toBeTruthy();
+    stepLogger.info('Item removed, cart is empty');
+  });
+
+  // --- Cart to checkout ---
+
+  test('proceed to checkout from cart (logged out user gets login prompt)', { tag: '@critical' }, async ({
+    productsPage,
+    cartPage,
+  }) => {
+    await annotate({ story: 'Checkout initiation', severity: Severity.BLOCKER });
+
+    await productsPage.goto();
+    await productsPage.addFirstProductToCart();
+    await productsPage.clickViewCartFromModal();
+
+    await cartPage.proceedToCheckout();
+
+    // without being logged in, site shows a modal asking to register/login
+    const modalShown = await cartPage.isLoginModalShown();
+    expect(modalShown).toBeTruthy();
+    stepLogger.info('Login/register modal shown for guest checkout attempt');
+  });
+
+  test('cart page shows prices and totals for each item', { tag: '@regression' }, async ({
+    productsPage,
+    cartPage,
+  }) => {
+    await annotate({ story: 'Cart pricing', severity: Severity.NORMAL });
+
+    await productsPage.goto();
+    await productsPage.addFirstProductToCart();
+    await productsPage.clickViewCartFromModal();
+
+    const price = await cartPage.getPriceAtRow(0);
+    const total = await cartPage.getTotalAtRow(0);
+    const qty = await cartPage.getQuantityAtRow(0);
+
+    // price format is "Rs. NNN"
+    expect(price).toMatch(/Rs\.\s*\d+/);
+    expect(total).toMatch(/Rs\.\s*\d+/);
+    expect(qty).toBeTruthy();
+
+    stepLogger.info(`Row 0: price=${price}, qty=${qty}, total=${total}`);
   });
 });

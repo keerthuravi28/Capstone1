@@ -21,7 +21,7 @@ type ApiWorkerFixtures = {
 
 export const test = base.extend<ApiFixtures, ApiWorkerFixtures>({
   apiSession: [
-    async ({}, use) => {
+    async (_deps, use) => {
       const context = await playwrightRequest.newContext();
       const authApi = new AuthApiClient(context);
       await authApi.loginFromEnv();

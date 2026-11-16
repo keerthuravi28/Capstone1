@@ -2,72 +2,76 @@ import { Page } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { pageLogger } from '../../shared/utils/logger';
 
-/**
- * ABOUTME: ContactPage encapsulates the contact form and inquiries functionality.
- * ABOUTME: Handles contact form submission, validation, and confirmation.
- */
-export class ContactPage extends BasePage {
-  // ─── Selectors ───────────────────────────────────────────────────────────────
+// ABOUTME: Page object for the Contact Us form on automationexercise.com.
+// ABOUTME: Handles form entry, file upload, submission, and success verification.
 
-  private readonly contactFormContainer = this.page.locator('[class*="contact"], form[id*="contact"]');
-  private readonly nameInput = this.page.locator('input[data-qa="name"], input[name="name"]');
-  private readonly emailInput = this.page.locator('input[data-qa="email"], input[name="email"]');
-  private readonly subjectInput = this.page.locator('input[data-qa="subject"], input[name="subject"]');
-  private readonly messageTextarea = this.page.locator('textarea[data-qa="message"], textarea[name="message"]');
-  private readonly uploadFileInput = this.page.locator('input[type="file"]');
-  private readonly submitButton = this.page.locator('button[data-qa="submit"], input[type="submit"]');
-  private readonly successMessage = this.page.locator('text=/Success|Thank you|Message sent|Contact received/i');
-  private readonly errorMessage = this.page.locator('[class*="error"], text=/Error|Failed|Invalid/i');
-  private readonly requiredFieldError = this.page.locator('text=/required|This field is required/i');
-  private readonly homeLink = this.page.locator('a:has-text("Home")');
-  private readonly contactLink = this.page.locator('a:has-text("Contact Us")');
+export class ContactPage extends BasePage {
+
+  private readonly getInTouchHeading = this.page.locator('h2:has-text("Get In Touch")');
+
+  // form fields - all use data-qa attributes which is nice
+  private readonly nameInput = this.page.locator('input[data-qa="name"]');
+  private readonly emailInput = this.page.locator('input[data-qa="email"]');
+  private readonly subjectInput = this.page.locator('input[data-qa="subject"]');
+  private readonly messageArea = this.page.locator('textarea[data-qa="message"]');
+  private readonly fileUpload = this.page.locator('input[name="upload_file"]');
+  private readonly submitBtn = this.page.locator('input[data-qa="submit-button"]');
+
+  // success state - shows after form submission + OK on the browser alert
+  private readonly successMsg = this.page.locator('div.status.alert-success');
+
+  // green "Home" button shown after successful submission (not the nav bar link)
+  private readonly homeBtn = this.page.locator('.contact-form a.btn-success, a.btn.btn-success:has-text("Home")');
 
   constructor(page: Page) {
     super(page);
   }
 
-  // ─── Navigation ──────────────────────────────────────────────────────────────
-
   async goto(): Promise<void> {
     await this.navigate('/contact_us');
-    await this.waitForVisible(this.contactFormContainer);
+    await this.getInTouchHeading.waitFor({ state: 'visible', timeout: 5000 });
     pageLogger.info('Contact Us page loaded');
   }
 
-  async gotoContact(): Promise<void> {
-    await this.click(this.contactLink, 'Contact Us link');
-    pageLogger.info('Navigated to contact page');
-  }
-
-  // ─── Form Actions ────────────────────────────────────────────────────────────
-
   async fillName(name: string): Promise<void> {
-    await this.fill(this.nameInput, name, 'Name');
+    await this.fill(this.nameInput, name, 'name');
   }
 
   async fillEmail(email: string): Promise<void> {
-    await this.fill(this.emailInput, email, 'Email');
+    await this.fill(this.emailInput, email, 'email');
   }
 
   async fillSubject(subject: string): Promise<void> {
-    await this.fill(this.subjectInput, subject, 'Subject');
+    await this.fill(this.subjectInput, subject, 'subject');
   }
 
-  async fillMessage(message: string): Promise<void> {
-    await this.fill(this.messageTextarea, message, 'Message');
+  async fillMessage(msg: string): Promise<void> {
+    await this.fill(this.messageArea, msg, 'message');
   }
 
-  async uploadFile(filePath: string): Promise<void> {
-    await this.uploadFileInput.setInputFiles(filePath);
-    pageLogger.info(`Uploaded file: ${filePath}`);
+  async attachFile(filePath: string): Promise<void> {
+    await this.fileUpload.setInputFiles(filePath);
+    pageLogger.info(`Attached file: ${filePath}`);
   }
 
+  async clickSubmit(): Promise<void> {
+    await this.submitBtn.click();
+    pageLogger.info('Clicked submit');
+  }
+
+  // the site triggers a browser confirm() dialog on submit - need to handle it
   async submitForm(): Promise<void> {
-    await this.click(this.submitButton, 'Submit button');
-    pageLogger.info('Submitted contact form');
+    // set up dialog handler BEFORE clicking submit
+    this.page.once('dialog', async dialog => {
+      pageLogger.info(`Dialog appeared: "${dialog.message()}"`);
+      await dialog.accept();
+    });
+    await this.clickSubmit();
+    // wait for success message to appear after dialog is accepted
+    await this.page.waitForTimeout(500);
   }
 
-  async fillAndSubmitContactForm(data: {
+  async fillAndSubmit(data: {
     name: string;
     email: string;
     subject: string;
@@ -78,160 +82,51 @@ export class ContactPage extends BasePage {
     await this.fillSubject(data.subject);
     await this.fillMessage(data.message);
     await this.submitForm();
-    pageLogger.info('Contact form submitted');
   }
 
-  async clearForm(): Promise<void> {
-    await this.fill(this.nameInput, '', 'Clear name');
-    await this.fill(this.emailInput, '', 'Clear email');
-    await this.fill(this.subjectInput, '', 'Clear subject');
-    await this.fill(this.messageTextarea, '', 'Clear message');
-    pageLogger.info('Form cleared');
+  async clearAllFields(): Promise<void> {
+    await this.nameInput.clear();
+    await this.emailInput.clear();
+    await this.subjectInput.clear();
+    await this.messageArea.clear();
   }
 
-  // ─── Validation & Response ────────────────────────────────────────────────────
-
-  async getSuccessMessage(): Promise<string> {
-    await this.waitForVisible(this.successMessage);
-    return this.getText(this.successMessage);
+  async clickHomeAfterSuccess(): Promise<void> {
+    await this.click(this.homeBtn, 'Home button');
   }
 
-  async getErrorMessage(): Promise<string> {
-    const isVisible = await this.isVisible(this.errorMessage, 2000);
-    if (!isVisible) {
-      return '';
-    }
-    return this.getText(this.errorMessage);
-  }
+  // getters for verifying form state
+  async getNameValue(): Promise<string> { return this.nameInput.inputValue(); }
+  async getEmailValue(): Promise<string> { return this.emailInput.inputValue(); }
+  async getSubjectValue(): Promise<string> { return this.subjectInput.inputValue(); }
+  async getMessageValue(): Promise<string> { return this.messageArea.inputValue(); }
 
-  async getRequiredFieldErrors(): Promise<number> {
-    const errors = await this.page.locator(this.requiredFieldError).count();
-    return errors;
-  }
-
-  // ─── Form State Checking ──────────────────────────────────────────────────────
-
-  async isFormVisible(): Promise<boolean> {
-    return this.isVisible(this.contactFormContainer, 2000);
-  }
-
-  async getNameValue(): Promise<string> {
-    return this.nameInput.inputValue().catch(() => '');
-  }
-
-  async getEmailValue(): Promise<string> {
-    return this.emailInput.inputValue().catch(() => '');
-  }
-
-  async getSubjectValue(): Promise<string> {
-    return this.subjectInput.inputValue().catch(() => '');
-  }
-
-  async getMessageValue(): Promise<string> {
-    return this.messageTextarea.inputValue().catch(() => '');
-  }
-
-  // ─── Assertions ───────────────────────────────────────────────────────────────
+  // assertions
 
   async assertOnContactPage(): Promise<void> {
-    await this.assertUrl(/contact/);
-    await this.assertVisible(this.contactFormContainer, 'Contact form should be visible');
-    pageLogger.info('Verified on contact page');
+    await this.assertUrl(/contact_us/);
+    await this.assertVisible(this.getInTouchHeading, '"Get In Touch" heading');
   }
 
-  async assertContactFormVisible(): Promise<void> {
-    await this.assertVisible(this.contactFormContainer, 'Contact form should be visible');
+  async assertFormFieldsVisible(): Promise<void> {
+    await this.assertVisible(this.nameInput, 'name field');
+    await this.assertVisible(this.emailInput, 'email field');
+    await this.assertVisible(this.subjectInput, 'subject field');
+    await this.assertVisible(this.messageArea, 'message field');
+    await this.assertVisible(this.submitBtn, 'submit button');
   }
 
-  async assertAllFormFieldsVisible(): Promise<void> {
-    await this.assertVisible(this.nameInput, 'Name field should be visible');
-    await this.assertVisible(this.emailInput, 'Email field should be visible');
-    await this.assertVisible(this.subjectInput, 'Subject field should be visible');
-    await this.assertVisible(this.messageTextarea, 'Message field should be visible');
-  }
-
-  async assertSubmitButtonVisible(): Promise<void> {
-    await this.assertVisible(this.submitButton, 'Submit button should be visible');
-  }
-
-  async assertFormSubmissionSuccess(): Promise<void> {
-    await this.assertVisible(this.successMessage, 'Success message should be visible');
-    pageLogger.info('Form submission verified as successful');
-  }
-
-  async assertFormSubmissionFailed(): Promise<void> {
-    const errorVisible = await this.isVisible(this.errorMessage, 2000);
-    if (!errorVisible) {
-      throw new Error('Expected error message but form was submitted');
+  async assertSuccessMessageShown(): Promise<void> {
+    await this.successMsg.waitFor({ state: 'visible', timeout: 5000 });
+    const text = await this.successMsg.innerText();
+    if (!text.toLowerCase().includes('success')) {
+      throw new Error(`Expected success message, got: "${text}"`);
     }
-    pageLogger.info('Form submission failed as expected');
+    pageLogger.info('Success message verified');
   }
 
-  async assertNameFieldRequired(): Promise<void> {
-    await this.fillEmail('test@example.com');
-    await this.fillSubject('Test Subject');
-    await this.fillMessage('Test Message');
-    await this.submitForm();
-
-    await this.page.waitForTimeout(500);
-    const nameInput = await this.nameInput.isVisible();
-    if (!nameInput) {
-      throw new Error('Name field should be visible for validation');
-    }
-    pageLogger.info('Name field validation verified');
-  }
-
-  async assertEmailFieldRequired(): Promise<void> {
-    await this.fillName('Test User');
-    await this.fillSubject('Test Subject');
-    await this.fillMessage('Test Message');
-    await this.submitForm();
-
-    await this.page.waitForTimeout(500);
-    const emailInput = await this.emailInput.isVisible();
-    if (!emailInput) {
-      throw new Error('Email field should be visible for validation');
-    }
-    pageLogger.info('Email field validation verified');
-  }
-
-  async assertMessageFieldRequired(): Promise<void> {
-    await this.fillName('Test User');
-    await this.fillEmail('test@example.com');
-    await this.fillSubject('Test Subject');
-    await this.submitForm();
-
-    await this.page.waitForTimeout(500);
-    const messageInput = await this.messageTextarea.isVisible();
-    if (!messageInput) {
-      throw new Error('Message field should be visible for validation');
-    }
-    pageLogger.info('Message field validation verified');
-  }
-
-  async assertFormFieldsNotEmpty(data: {
-    name: string;
-    email: string;
-    subject: string;
-    message: string;
-  }): Promise<void> {
-    const nameValue = await this.getNameValue();
-    const emailValue = await this.getEmailValue();
-    const subjectValue = await this.getSubjectValue();
-    const messageValue = await this.getMessageValue();
-
-    if (nameValue !== data.name) {
-      throw new Error(`Name mismatch: expected "${data.name}", got "${nameValue}"`);
-    }
-    if (emailValue !== data.email) {
-      throw new Error(`Email mismatch: expected "${data.email}", got "${emailValue}"`);
-    }
-    if (subjectValue !== data.subject) {
-      throw new Error(`Subject mismatch: expected "${data.subject}", got "${subjectValue}"`);
-    }
-    if (messageValue !== data.message) {
-      throw new Error(`Message mismatch: expected "${data.message}", got "${messageValue}"`);
-    }
-    pageLogger.info('All form fields verified as filled correctly');
+  async assertFormStillVisible(): Promise<void> {
+    // if validation failed, form should still be on screen
+    await this.assertVisible(this.nameInput, 'name field (form still showing)');
   }
 }

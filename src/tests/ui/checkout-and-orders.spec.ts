@@ -1,379 +1,234 @@
 import { test, expect } from '../../main/ui/fixtures/ecommerce-fixtures';
+import { randomString } from '../../main/shared/utils/helpers';
 import { stepLogger } from '../../main/shared/utils/logger';
-import { annotate, parameter, Severity } from '../../main/shared/reporting/reporting';
+import { annotate, Severity } from '../../main/shared/reporting/reporting';
 import { takeScreenshot } from '../../main/shared/utils/helpers';
-import checkoutData from '../../../test-data/checkout-data.json';
-import orderData from '../../../test-data/order-data.json';
 
-/**
- * ABOUTME: Checkout flow and order placement test suite for automationexercise.com.
- * ABOUTME: Tests delivery address, order placement, and order confirmation (Requirements #3 & #4).
- */
+// ABOUTME: End-to-end checkout and order placement tests.
+// ABOUTME: Covers Requirements #3 (Checkout Flow) and #4 (Order Placement Validation).
 
-test.describe('E-Commerce Checkout Flow & Order Placement @critical', () => {
-  test.beforeEach(async ({ page }, testInfo) => {
+// test card details - not real, site accepts anything in the right format
+const TEST_CARD = {
+  nameOnCard: 'Test User',
+  cardNumber: '4100000000000000',
+  cvc: '123',
+  expiryMonth: '12',
+  expiryYear: '2030',
+};
+
+test.describe('Checkout & Order Placement', () => {
+
+  // every test registers a fresh user, adds product, and navigates to checkout
+  // which easily takes 40-50s on a slow connection - need extra headroom
+  test.setTimeout(120_000);
+
+  // These tests need a logged-in user to reach checkout.
+  // We register a fresh account in beforeEach so tests are independent.
+  test.beforeEach(async ({ page, ecommerceLoginPage }, testInfo) => {
     await annotate({
       epic: 'E-Commerce Platform',
-      feature: 'Checkout and Order Placement',
+      feature: 'Checkout and Orders',
       owner: 'QA Team',
       layer: 'ui',
     });
-
-    stepLogger.info(`▶ Starting test: ${testInfo.title}`);
-    await page.goto('https://automationexercise.com', { waitUntil: 'domcontentloaded' });
+    stepLogger.info(`Starting: ${testInfo.title}`);
   });
 
   test.afterEach(async ({ page }, testInfo) => {
     if (testInfo.status !== testInfo.expectedStatus) {
-      stepLogger.error(`✖ Test failed: ${testInfo.title}`);
-      await takeScreenshot(page, `FAILED-checkout-${testInfo.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`);
-    } else {
-      stepLogger.info(`✔ Test passed: ${testInfo.title}`);
+      await takeScreenshot(page, `FAIL-checkout-${testInfo.title.replace(/\W+/g, '-')}`);
     }
   });
 
-  // ── Checkout Page Tests ───────────────────────────────────────────────────────
+  // helper: register, add product, get to checkout
+  async function setupCartAndCheckout(
+    page: any,
+    productsPage: any,
+    cartPage: any,
+    ecommerceLoginPage: any,
+  ) {
+    // register a fresh user
+    const name = `TestUser${randomString(4)}`;
+    const email = `test.${randomString(6)}@mailinator.com`;
 
-  test('checkout page displays delivery address section', { tag: ['@smoke', '@critical'] }, async ({
-    page,
-    checkoutPage,
+    await page.goto('https://automationexercise.com/login');
+    await page.fill('input[data-qa="signup-name"]', name);
+    await page.fill('input[data-qa="signup-email"]', email);
+    await page.click('button[data-qa="signup-button"]');
+    await page.waitForLoadState('domcontentloaded');
+
+    // fill account creation form if we land on it
+    const accountFormVisible = await page.locator('input#password').isVisible().catch(() => false);
+    if (accountFormVisible) {
+      await page.fill('input#password', 'Test@1234');
+      await page.selectOption('select#days', '10');
+      await page.selectOption('select#months', '5');
+      await page.selectOption('select#years', '1990');
+      await page.fill('input#first_name', 'Test');
+      await page.fill('input#last_name', 'User');
+      await page.fill('input#address1', '123 Test Street');
+      await page.fill('input#state', 'TestState');
+      await page.fill('input#city', 'TestCity');
+      await page.fill('input#zipcode', '12345');
+      await page.fill('input#mobile_number', '5551234567');
+      await page.click('button[data-qa="create-account"]');
+      await page.waitForLoadState('domcontentloaded');
+
+      // click continue on account created page
+      const continueBtn = page.locator('a[data-qa="continue-button"]');
+      if (await continueBtn.isVisible().catch(() => false)) {
+        await continueBtn.click();
+      }
+    }
+
+    // now add a product
+    await productsPage.goto();
+    await productsPage.addFirstProductToCart();
+    await productsPage.clickViewCartFromModal();
+
+    // proceed to checkout
+    await cartPage.proceedToCheckout();
+    stepLogger.info('Setup complete: registered, product in cart, on checkout');
+  }
+
+  // --- Checkout page tests ---
+
+  test('checkout shows delivery address and order review', { tag: ['@smoke', '@critical'] }, async ({
+    page, productsPage, cartPage, checkoutPage, ecommerceLoginPage,
   }) => {
-    await annotate({
-      story: 'Checkout page structure',
-      severity: Severity.BLOCKER,
-      description: 'Checkout page displays delivery address section',
-    });
+    await annotate({ story: 'Checkout page layout', severity: Severity.BLOCKER });
 
-    await test.step('Navigate to checkout page', async () => {
-      await checkoutPage.goto();
-    });
+    await setupCartAndCheckout(page, productsPage, cartPage, ecommerceLoginPage);
 
-    await test.step('Verify checkout page elements', async () => {
-      await checkoutPage.assertOnCheckoutPage();
-      await checkoutPage.assertDeliveryAddressSectionVisible();
-      stepLogger.info('Checkout page structure verified');
-    });
+    await checkoutPage.assertDeliveryAddressVisible();
+    await checkoutPage.assertOrderReviewVisible();
+    await checkoutPage.assertPlaceOrderButtonVisible();
 
-    await takeScreenshot(page, 'checkout-page-loaded');
+    stepLogger.info('Checkout page structure verified');
+    await takeScreenshot(page, 'checkout-page-layout');
   });
 
-  test('checkout page displays order review section', { tag: '@critical' }, async ({ page, checkoutPage }) => {
-    await annotate({
-      story: 'Order review display',
-      severity: Severity.BLOCKER,
-      description: 'Checkout page shows order review with cart items',
-    });
-
-    await test.step('Navigate to checkout', async () => {
-      await checkoutPage.goto();
-    });
-
-    await test.step('Verify order review section', async () => {
-      await checkoutPage.assertReviewOrderSectionVisible();
-      await checkoutPage.scrollToReviewOrder();
-      stepLogger.info('Order review section is visible');
-    });
-
-    await takeScreenshot(page, 'checkout-order-review');
-  });
-
-  test('fill delivery address with valid data', { tag: ['@smoke', '@critical'] }, async ({
-    page,
-    checkoutPage,
+  test('delivery address shows account details', { tag: '@critical' }, async ({
+    page, productsPage, cartPage, checkoutPage, ecommerceLoginPage,
   }) => {
-    await annotate({
-      story: 'Delivery address form entry',
-      severity: Severity.BLOCKER,
-      description: 'User can fill delivery address with valid information',
-    });
+    await annotate({ story: 'Address pre-fill', severity: Severity.BLOCKER });
 
-    const addressData = checkoutData.validAddresses[0];
-    await parameter('firstName', addressData.firstName);
-    await parameter('email', addressData.email);
-    await parameter('country', addressData.country);
+    await setupCartAndCheckout(page, productsPage, cartPage, ecommerceLoginPage);
 
-    await test.step('Navigate to checkout', async () => {
-      await checkoutPage.goto();
-    });
+    // address should contain what we entered during registration
+    const name = await checkoutPage.getDeliveryName();
+    expect(name).toBeTruthy();
+    stepLogger.info(`Delivery name on checkout: "${name}"`);
 
-    await test.step('Fill delivery address', async () => {
-      await checkoutPage.fillDeliveryAddress(addressData);
-      stepLogger.info('Delivery address filled');
-    });
-
-    await test.step('Verify address fields populated', async () => {
-      await checkoutPage.assertAddressFieldsFilled();
-      stepLogger.info('Address fields verified');
-    });
-
-    await takeScreenshot(page, 'delivery-address-filled');
+    const address = await checkoutPage.getDeliveryAddress();
+    expect(address).toBeTruthy();
+    stepLogger.info(`Delivery address: "${address}"`);
   });
 
-  test('delivery address requires first name', { tag: '@regression' }, async ({ page, checkoutPage }) => {
-    await annotate({
-      story: 'Delivery address validation',
-      severity: Severity.NORMAL,
-      description: 'First name field is required in delivery address',
-    });
-
-    const invalidAddress = checkoutData.invalidAddresses[0];
-
-    await test.step('Navigate to checkout', async () => {
-      await checkoutPage.goto();
-    });
-
-    await test.step('Try to fill without first name', async () => {
-      await checkoutPage.fillLastName(invalidAddress.lastName);
-      await checkoutPage.fillAddress(invalidAddress.address);
-      stepLogger.info('Filled form without first name');
-    });
-
-    await test.step('Verify first name is required', async () => {
-      const firstNameInput = page.locator('input[data-qa="first_name"]');
-      const isVisible = await firstNameInput.isVisible();
-      expect(isVisible).toBeTruthy();
-      stepLogger.info('First name field is required');
-    });
-
-    await takeScreenshot(page, 'first-name-required');
-  });
-
-  test('add order comments during checkout', { tag: '@regression' }, async ({ page, checkoutPage }) => {
-    await annotate({
-      story: 'Order comments',
-      severity: Severity.MINOR,
-      description: 'User can add comments to order during checkout',
-    });
-
-    const addressData = checkoutData.validAddresses[0];
-    const comment = checkoutData.orderComments[0].comment;
-    await parameter('comment', comment);
-
-    await test.step('Navigate and fill address', async () => {
-      await checkoutPage.goto();
-      await checkoutPage.fillDeliveryAddress(addressData);
-    });
-
-    await test.step('Add order comment', async () => {
-      await checkoutPage.addComments(comment);
-      stepLogger.info(`Added comment: ${comment}`);
-    });
-
-    await test.step('Verify comment field populated', async () => {
-      const commentField = page.locator('textarea[name="comment"]');
-      const value = await commentField.inputValue();
-      expect(value).toBe(comment);
-      stepLogger.info('Comment field verified');
-    });
-
-    await takeScreenshot(page, 'order-comments-added');
-  });
-
-  // ── Order Placement Tests ─────────────────────────────────────────────────────
-
-  test('place order with valid delivery address', { tag: ['@smoke', '@critical'] }, async ({
-    page,
-    checkoutPage,
-    orderPage,
+  test('add comment to order during checkout', { tag: '@regression' }, async ({
+    page, productsPage, cartPage, checkoutPage, ecommerceLoginPage,
   }) => {
-    await annotate({
-      story: 'Order placement success',
-      severity: Severity.BLOCKER,
-      description: 'User can successfully place an order with valid address',
-    });
+    await annotate({ story: 'Order comments', severity: Severity.MINOR });
 
-    const addressData = checkoutData.validAddresses[0];
+    await setupCartAndCheckout(page, productsPage, cartPage, ecommerceLoginPage);
 
-    await test.step('Navigate to checkout and fill address', async () => {
-      await checkoutPage.goto();
-      await checkoutPage.fillDeliveryAddress(addressData);
-      stepLogger.info('Delivery address filled for order');
-    });
+    const comment = 'Please leave at the door';
+    await checkoutPage.enterComment(comment);
 
-    await test.step('Place order', async () => {
-      await checkoutPage.assertPlaceOrderButtonVisible();
-      // Note: Actual payment step would occur here in real scenario
-      // For now, we click the button and verify navigation
-      await checkoutPage.proceedToPayment();
-      stepLogger.info('Clicked place order button');
-    });
-
-    await test.step('Verify order page navigation', async () => {
-      await page.waitForTimeout(2000);
-      stepLogger.info('Waiting for order confirmation');
-    });
-
-    await takeScreenshot(page, 'order-placed-success');
+    // verify comment stuck
+    const commentBox = page.locator('textarea[name="message"]');
+    const val = await commentBox.inputValue();
+    expect(val).toBe(comment);
   });
 
-  test('order validation - missing required fields prevents placement', { tag: '@regression' }, async ({
-    page,
-    checkoutPage,
+  // --- Payment & Order placement ---
+
+  test('place order with valid payment details', { tag: ['@smoke', '@critical'] }, async ({
+    page, productsPage, cartPage, checkoutPage, orderPage, ecommerceLoginPage,
   }) => {
-    await annotate({
-      story: 'Order validation',
-      severity: Severity.NORMAL,
-      description: 'Missing required fields prevents order placement',
-    });
+    await annotate({ story: 'Successful order', severity: Severity.BLOCKER });
 
-    const incompleteAddress = checkoutData.invalidAddresses[0];
+    await setupCartAndCheckout(page, productsPage, cartPage, ecommerceLoginPage);
+    await checkoutPage.clickPlaceOrder();
 
-    await test.step('Navigate to checkout', async () => {
-      await checkoutPage.goto();
-    });
+    // should be on payment page now
+    await orderPage.assertOnPaymentPage();
+    await orderPage.fillAndSubmitPayment(TEST_CARD);
 
-    await test.step('Try to place order with incomplete address', async () => {
-      await checkoutPage.fillLastName(incompleteAddress.lastName);
-      await checkoutPage.fillAddress(incompleteAddress.address);
-      stepLogger.info('Attempted order with incomplete address');
-    });
-
-    await test.step('Verify address validation fails', async () => {
-      const firstNameInput = page.locator('input[data-qa="first_name"]');
-      const isVisible = await firstNameInput.isVisible();
-      expect(isVisible).toBeTruthy();
-      stepLogger.info('Incomplete address validation verified');
-    });
-
-    await takeScreenshot(page, 'order-validation-failed');
+    await orderPage.assertOrderPlaced();
+    stepLogger.info('Order placed successfully');
+    await takeScreenshot(page, 'order-placed');
   });
 
-  // ── Order Confirmation Tests ──────────────────────────────────────────────────
-
-  test('order confirmation page displays order number', { tag: '@critical' }, async ({
-    page,
-    orderPage,
+  test('order confirmation page has download invoice and continue buttons', { tag: '@critical' }, async ({
+    page, productsPage, cartPage, checkoutPage, orderPage, ecommerceLoginPage,
   }) => {
-    await annotate({
-      story: 'Order confirmation',
-      severity: Severity.BLOCKER,
-      description: 'Order confirmation page displays order number',
-    });
+    await annotate({ story: 'Order confirmation elements', severity: Severity.BLOCKER });
 
-    await test.step('Navigate to order confirmation page', async () => {
-      await page.goto('https://automationexercise.com/order_placed', { waitUntil: 'domcontentloaded' });
-    });
+    await setupCartAndCheckout(page, productsPage, cartPage, ecommerceLoginPage);
+    await checkoutPage.clickPlaceOrder();
+    await orderPage.fillAndSubmitPayment(TEST_CARD);
 
-    await test.step('Verify order confirmation elements', async () => {
-      await orderPage.assertOrderPlacedSuccessfully();
-      await orderPage.assertOrderNumberDisplayed();
-      stepLogger.info('Order confirmation verified');
-    });
-
-    await takeScreenshot(page, 'order-confirmation-page');
+    await orderPage.assertOrderPlaced();
+    await orderPage.assertDownloadInvoiceVisible();
+    await orderPage.assertContinueButtonVisible();
   });
 
-  test('order confirmation shows order details and total', { tag: '@critical' }, async ({
-    page,
-    orderPage,
+  test('continue button after order navigates to home', { tag: '@regression' }, async ({
+    page, productsPage, cartPage, checkoutPage, orderPage, ecommerceLoginPage,
   }) => {
-    await annotate({
-      story: 'Order details display',
-      severity: Severity.BLOCKER,
-      description: 'Order confirmation displays details, items, and total',
-    });
+    await annotate({ story: 'Post-order navigation', severity: Severity.NORMAL });
 
-    await test.step('Navigate to order confirmation', async () => {
-      await page.goto('https://automationexercise.com/order_placed', { waitUntil: 'domcontentloaded' });
-    });
+    await setupCartAndCheckout(page, productsPage, cartPage, ecommerceLoginPage);
+    await checkoutPage.clickPlaceOrder();
+    await orderPage.fillAndSubmitPayment(TEST_CARD);
+    await orderPage.assertOrderPlaced();
 
-    await test.step('Verify order details', async () => {
-      await orderPage.assertOrderDetailsVisible();
-      await orderPage.assertOrderTotalDisplayed();
-      const details = await orderPage.getOrderDetails();
-      await parameter('orderNumber', details.orderNumber);
-      await parameter('orderTotal', details.total);
-      stepLogger.info('Order details verified');
-    });
+    await orderPage.clickContinue();
+    await page.waitForLoadState('networkidle').catch(() => {});
 
-    await takeScreenshot(page, 'order-details-display');
+    // should be back on homepage
+    expect(page.url()).toMatch(/automationexercise\.com\/?$/);
+    stepLogger.info('Returned to homepage after order');
   });
 
-  test('download invoice from order confirmation', { tag: '@regression' }, async ({ page, orderPage }) => {
-    await annotate({
-      story: 'Invoice download',
-      severity: Severity.NORMAL,
-      description: 'User can download invoice from order confirmation',
-    });
+  // --- Validation scenarios ---
 
-    await test.step('Navigate to order confirmation', async () => {
-      await page.goto('https://automationexercise.com/order_placed', { waitUntil: 'domcontentloaded' });
-    });
+  test('checkout without products redirects to empty cart', { tag: '@regression' }, async ({
+    page, cartPage,
+  }) => {
+    await annotate({ story: 'Empty cart checkout', severity: Severity.NORMAL });
 
-    await test.step('Verify invoice button visible', async () => {
-      await orderPage.assertDownloadInvoiceButtonVisible();
-      stepLogger.info('Download invoice button is visible');
-    });
-
-    await takeScreenshot(page, 'invoice-download-button');
+    // go directly to cart without adding anything
+    await cartPage.goto();
+    const empty = await cartPage.isCartEmpty();
+    expect(empty).toBeTruthy();
+    stepLogger.info('Empty cart correctly shown');
   });
 
-  test('continue shopping from order confirmation', { tag: '@regression' }, async ({ page, orderPage }) => {
-    await annotate({
-      story: 'Continue shopping after order',
-      severity: Severity.MINOR,
-      description: 'User can continue shopping after order placed',
-    });
+  test('checkout as guest shows register/login prompt', { tag: '@regression' }, async ({
+    page, productsPage, cartPage,
+  }) => {
+    await annotate({ story: 'Guest checkout block', severity: Severity.NORMAL });
 
-    await test.step('Navigate to order confirmation', async () => {
-      await page.goto('https://automationexercise.com/order_placed', { waitUntil: 'domcontentloaded' });
-    });
+    await productsPage.goto();
+    await productsPage.addFirstProductToCart();
+    await productsPage.clickViewCartFromModal();
 
-    await test.step('Click continue shopping', async () => {
-      await orderPage.continueShopping();
-      stepLogger.info('Clicked continue shopping');
-    });
-
-    await test.step('Verify navigation away from order page', async () => {
-      await page.waitForTimeout(500);
-      const url = page.url();
-      expect(url).not.toContain('order_placed');
-      stepLogger.info('Navigation verified');
-    });
-
-    await takeScreenshot(page, 'continue-shopping-after-order');
+    await cartPage.proceedToCheckout();
+    const modal = await cartPage.isLoginModalShown();
+    expect(modal).toBeTruthy();
+    stepLogger.info('Guest user correctly prompted to login');
   });
 
-  test('view order in order history', { tag: '@regression' }, async ({ page, orderPage }) => {
-    await annotate({
-      story: 'Order history',
-      severity: Severity.NORMAL,
-      description: 'User can view orders in order history',
-    });
+  test('billing address also shown on checkout', { tag: '@regression' }, async ({
+    page, productsPage, cartPage, checkoutPage, ecommerceLoginPage,
+  }) => {
+    await annotate({ story: 'Billing address display', severity: Severity.MINOR });
 
-    await test.step('Navigate to order history', async () => {
-      await orderPage.gotoOrderHistory();
-      stepLogger.info('Navigated to order history');
-    });
+    await setupCartAndCheckout(page, productsPage, cartPage, ecommerceLoginPage);
 
-    await test.step('Verify orders table displayed', async () => {
-      await orderPage.assertOnOrderHistoryPage();
-      await orderPage.assertOrdersTableDisplayed();
-      const count = await orderPage.getOrdersCount();
-      await parameter('ordersCount', String(count));
-      stepLogger.info(`${count} orders in history`);
-    });
-
-    await takeScreenshot(page, 'order-history-view');
-  });
-
-  test('order status displays in order details', { tag: '@regression' }, async ({ page, orderPage }) => {
-    await annotate({
-      story: 'Order status tracking',
-      severity: Severity.NORMAL,
-      description: 'Order status is displayed in order details',
-    });
-
-    await test.step('Navigate to order confirmation', async () => {
-      await page.goto('https://automationexercise.com/order_placed', { waitUntil: 'domcontentloaded' });
-    });
-
-    await test.step('Verify order details displayed', async () => {
-      const details = await orderPage.getOrderDetails();
-      await parameter('orderStatus', details.status);
-      stepLogger.info(`Order status: ${details.status}`);
-    });
-
-    await takeScreenshot(page, 'order-status-display');
+    await checkoutPage.assertBillingAddressVisible();
+    stepLogger.info('Billing address section visible on checkout');
   });
 });

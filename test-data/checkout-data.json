@@ -1,90 +1,19 @@
 {
-  "validAddresses": [
-    {
-      "firstName": "John",
-      "lastName": "Doe",
-      "address": "123 Main Street, Apt 4B",
-      "country": "United States",
-      "state": "California",
-      "city": "San Francisco",
-      "zipcode": "94105",
-      "phone": "5551234567",
-      "description": "Valid US address"
-    },
-    {
-      "firstName": "Jane",
-      "lastName": "Smith",
-      "address": "456 Oak Avenue",
-      "country": "Canada",
-      "state": "Ontario",
-      "city": "Toronto",
-      "zipcode": "M5V 3A8",
-      "phone": "4165551234",
-      "description": "Valid Canadian address"
-    }
-  ],
-  "invalidAddresses": [
-    {
-      "firstName": "",
-      "lastName": "Doe",
-      "address": "123 Main Street",
-      "country": "United States",
-      "state": "CA",
-      "city": "San Francisco",
-      "zipcode": "94105",
-      "phone": "5551234567",
-      "expectedError": "firstName required",
-      "description": "Missing first name"
-    },
-    {
-      "firstName": "John",
-      "lastName": "",
-      "address": "123 Main Street",
-      "country": "United States",
-      "state": "CA",
-      "city": "San Francisco",
-      "zipcode": "94105",
-      "phone": "5551234567",
-      "expectedError": "lastName required",
-      "description": "Missing last name"
-    },
-    {
-      "firstName": "John",
-      "lastName": "Doe",
-      "address": "",
-      "country": "United States",
-      "state": "CA",
-      "city": "San Francisco",
-      "zipcode": "94105",
-      "phone": "5551234567",
-      "expectedError": "address required",
-      "description": "Missing address"
-    }
-  ],
-  "paymentMethods": [
-    {
-      "type": "card",
-      "name": "Credit Card",
-      "description": "Standard credit/debit card payment"
-    },
-    {
-      "type": "bank_transfer",
-      "name": "Bank Transfer",
-      "description": "Direct bank transfer payment"
-    }
-  ],
-  "orderComments": [
-    {
-      "comment": "Please deliver after 5 PM",
-      "description": "Special delivery instruction"
-    },
-    {
-      "comment": "Leave at front door",
-      "description": "Delivery location instruction"
-    },
-    {
-      "comment": "",
-      "description": "Optional comment field"
-    }
-  ]
+  "testCard": {
+    "nameOnCard": "Test User",
+    "cardNumber": "4100000000000000",
+    "cvc": "123",
+    "expiryMonth": "12",
+    "expiryYear": "2030"
+  },
+  "accountDefaults": {
+    "password": "Test@1234",
+    "firstName": "Test",
+    "lastName": "User",
+    "address": "123 Test Street",
+    "state": "TestState",
+    "city": "TestCity",
+    "zipcode": "12345",
+    "phone": "5551234567"
+  }
 }

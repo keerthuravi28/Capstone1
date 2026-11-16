@@ -1,77 +1,12 @@
 {
-  "productsToSearch": [
-    {
-      "name": "Blue Band",
-      "category": "Dresses",
-      "expectedInResults": true,
-      "description": "Search for a popular product"
-    },
-    {
-      "name": "sleeveless",
-      "category": "Dresses",
-      "expectedInResults": true,
-      "description": "Partial name search"
-    },
-    {
-      "name": "XYZ123Invalid",
-      "expectedInResults": false,
-      "description": "Search for non-existent product"
-    }
-  ],
-  "cartOperations": [
-    {
-      "productName": "Blue Band",
-      "quantity": 1,
-      "action": "add",
-      "description": "Add single product to cart"
-    },
-    {
-      "productName": "Blue Band",
-      "quantity": 2,
-      "action": "update",
-      "description": "Update product quantity in cart"
-    },
-    {
-      "productName": "Blue Band",
-      "action": "remove",
-      "description": "Remove product from cart"
-    }
-  ],
-  "cartValidation": [
-    {
-      "scenario": "add_single_product",
-      "items": 1,
-      "expectedCartCount": 1,
-      "description": "Cart should contain 1 item after adding product"
-    },
-    {
-      "scenario": "add_multiple_products",
-      "items": 3,
-      "expectedCartCount": 3,
-      "description": "Cart should contain 3 items after adding multiple products"
-    },
-    {
-      "scenario": "empty_cart",
-      "items": 0,
-      "expectedCartEmpty": true,
-      "description": "Cart should be empty after removing all products"
-    }
-  ],
-  "productFiltering": [
-    {
-      "category": "Men",
-      "expectedMinProducts": 1,
-      "description": "Filter by Men category"
-    },
-    {
-      "category": "Women",
-      "expectedMinProducts": 1,
-      "description": "Filter by Women category"
-    },
-    {
-      "category": "Kids",
-      "expectedMinProducts": 1,
-      "description": "Filter by Kids category"
-    }
-  ]
+  "searchTerms": {
+    "valid": ["Top", "Dress", "sleeveless"],
+    "partial": ["Polo", "jean"],
+    "noResults": "xyznonexistent12345"
+  },
+  "categories": {
+    "Women": ["Dress", "Tops", "Saree"],
+    "Men": ["Tshirts", "Jeans"],
+    "Kids": ["Dress", "Tops & Shirts"]
+  }
 }
