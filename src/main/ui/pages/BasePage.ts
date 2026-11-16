@@ -30,7 +30,13 @@ export abstract class BasePage extends WebAssertions {
    */
   async navigate(path = ''): Promise<void> {
     const url = path.startsWith('http') ? path : `${ENV.baseUrl}${path}`;
-    pageLogger.info(`Navigating to: ${url}`);
-    await this.page.goto(url, { waitUntil: 'domcontentloaded' });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      pageLogger.info(`Navigating to: ${url}`);
+      await this.page.goto(url, { waitUntil: 'domcontentloaded' });
+      const body = await this.page.locator('body').innerText().catch(() => '');
+      if (!body.includes('heavy load') && !body.includes('queue full')) return;
+      pageLogger.warn(`Site returned "heavy load" on attempt ${attempt}/3, waiting 5s`);
+      await this.page.waitForTimeout(5000);
+    }
   }
 }

@@ -101,6 +101,13 @@ export class CartPage extends BasePage {
 
   async proceedToCheckout(): Promise<void> {
     await this.click(this.proceedToCheckoutBtn, 'Proceed To Checkout');
+    // wait for either the checkout page or the login modal (guest users)
+    await Promise.race([
+      this.page.waitForURL(/checkout/, { timeout: 15000 }),
+      this.loginModal.waitFor({ state: 'visible', timeout: 15000 }),
+    ]).catch(() => {
+      pageLogger.warn('Neither checkout page nor login modal appeared after clicking Proceed');
+    });
   }
 
   // if not logged in, site shows a modal instead of going to checkout

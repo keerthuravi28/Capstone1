@@ -45,16 +45,14 @@ export class ProductsPage extends BasePage {
     for (let attempt = 1; attempt <= 3; attempt++) {
       await this.navigate('/products');
       try {
-        await this.productCards.first().waitFor({ state: 'visible', timeout: 15000 });
+        await this.productCards.first().waitFor({ state: 'visible', timeout: 20000 });
         pageLogger.info('Products page loaded');
         return;
       } catch {
-        pageLogger.warn(`Products page attempt ${attempt}/3 — content not visible, reloading`);
-        if (attempt < 3) await this.page.reload({ waitUntil: 'domcontentloaded' });
+        pageLogger.warn(`Products page attempt ${attempt}/3 — content not visible`);
       }
     }
-    await this.productCards.first().waitFor({ state: 'visible', timeout: 30000 });
-    pageLogger.info('Products page loaded');
+    throw new Error('Products page did not load after 3 attempts');
   }
 
   async searchFor(term: string): Promise<void> {
@@ -124,6 +122,7 @@ export class ProductsPage extends BasePage {
       pageLogger.info('Modal did not appear, navigating to cart directly');
       await this.navigate('/view_cart');
     }
+    await this.page.waitForURL(/view_cart/, { timeout: 10000 }).catch(() => {});
   }
 
   async viewProductDetails(idx: number): Promise<void> {

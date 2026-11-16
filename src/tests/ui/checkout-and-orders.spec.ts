@@ -55,31 +55,28 @@ test.describe('Checkout & Order Placement', () => {
     await page.fill('input[data-qa="signup-name"]', name);
     await page.fill('input[data-qa="signup-email"]', email);
     await page.click('button[data-qa="signup-button"]');
+
+    // wait for the account creation form to appear after redirect
+    await page.locator('input#password').waitFor({ state: 'visible', timeout: 15000 });
+
+    await page.fill('input#password', 'Test@1234');
+    await page.selectOption('select#days', '10');
+    await page.selectOption('select#months', '5');
+    await page.selectOption('select#years', '1990');
+    await page.fill('input#first_name', 'Test');
+    await page.fill('input#last_name', 'User');
+    await page.fill('input#address1', '123 Test Street');
+    await page.fill('input#state', 'TestState');
+    await page.fill('input#city', 'TestCity');
+    await page.fill('input#zipcode', '12345');
+    await page.fill('input#mobile_number', '5551234567');
+    await page.click('button[data-qa="create-account"]');
+
+    // wait for "Account Created" page and click continue
+    const continueBtn = page.locator('a[data-qa="continue-button"]');
+    await continueBtn.waitFor({ state: 'visible', timeout: 15000 });
+    await continueBtn.click();
     await page.waitForLoadState('domcontentloaded');
-
-    // fill account creation form if we land on it
-    const accountFormVisible = await page.locator('input#password').isVisible().catch(() => false);
-    if (accountFormVisible) {
-      await page.fill('input#password', 'Test@1234');
-      await page.selectOption('select#days', '10');
-      await page.selectOption('select#months', '5');
-      await page.selectOption('select#years', '1990');
-      await page.fill('input#first_name', 'Test');
-      await page.fill('input#last_name', 'User');
-      await page.fill('input#address1', '123 Test Street');
-      await page.fill('input#state', 'TestState');
-      await page.fill('input#city', 'TestCity');
-      await page.fill('input#zipcode', '12345');
-      await page.fill('input#mobile_number', '5551234567');
-      await page.click('button[data-qa="create-account"]');
-      await page.waitForLoadState('domcontentloaded');
-
-      // click continue on account created page
-      const continueBtn = page.locator('a[data-qa="continue-button"]');
-      if (await continueBtn.isVisible().catch(() => false)) {
-        await continueBtn.click();
-      }
-    }
 
     // now add a product
     await productsPage.goto();
