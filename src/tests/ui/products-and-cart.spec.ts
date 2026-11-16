@@ -77,7 +77,7 @@ test.describe('Product Search & Cart Management', () => {
     await productsPage.selectSubcategory('Dress');
 
     // page navigates to category URL
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded');
     const url = page.url();
     expect(url).toContain('category_products');
 

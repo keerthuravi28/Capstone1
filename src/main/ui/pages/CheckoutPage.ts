@@ -35,7 +35,7 @@ export class CheckoutPage extends BasePage {
 
   async goto(): Promise<void> {
     await this.navigate('/checkout');
-    await this.page.waitForLoadState('networkidle').catch(() => {});
+    await this.page.waitForLoadState('domcontentloaded');
     pageLogger.info('Checkout page loaded');
   }
 

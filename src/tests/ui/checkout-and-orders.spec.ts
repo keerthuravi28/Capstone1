@@ -182,7 +182,7 @@ test.describe('Checkout & Order Placement', () => {
     await orderPage.assertOrderPlaced();
 
     await orderPage.clickContinue();
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded');
 
     // should be back on homepage
     expect(page.url()).toMatch(/automationexercise\.com\/?$/);

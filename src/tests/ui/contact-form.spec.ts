@@ -194,7 +194,7 @@ test.describe('Contact Us Form', () => {
     await contactPage.assertSuccessMessageShown();
     await contactPage.clickHomeAfterSuccess();
 
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded');
     expect(page.url()).toMatch(/automationexercise\.com\/?$/);
     stepLogger.info('Navigated home after contact submission');
   });

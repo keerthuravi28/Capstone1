@@ -34,7 +34,7 @@ export class CartPage extends BasePage {
   async goto(): Promise<void> {
     await this.navigate('/view_cart');
     // table might take a sec to populate
-    await this.page.waitForLoadState('networkidle').catch(() => {});
+    await this.page.waitForLoadState('domcontentloaded');
     pageLogger.info('Cart page loaded');
   }
 
